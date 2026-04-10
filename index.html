@@ -1,0 +1,1996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JodyOS">
+<meta name="theme-color" content="#0a0a0f">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>JodyOS</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #141420;
+    --surface2: #1e1e2e;
+    --border: #32324a;
+    --accent: #9480ff;
+    --accent2: #ff6a9e;
+    --creation: #9480ff;
+    --family: #ff6a9e;
+    --admin: #ffa947;
+    --external: #47c4ff;
+    --legacy: #c8c8e0;
+    --self: #6affb8;
+    --shutdown: #374151;
+    --home: #ffdd47;
+    --text: #f5f5ff;
+    --text2: #c0c0de;
+    --text3: #8080a8;
+    --safe-top: env(safe-area-inset-top, 44px);
+    --safe-bottom: env(safe-area-inset-bottom, 34px);
+    --tab-h: 64px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── SHELL ── */
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  #header {
+    padding: calc(var(--safe-top) + 12px) 20px 12px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  #header .logo {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  #header .date-display {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text2);
+    text-align: right;
+    line-height: 1.4;
+  }
+
+  #header .med-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+  #header .med-btn.taken { border-color: var(--self); background: rgba(106,255,184,0.15); }
+
+  #content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .view { 
+    position: absolute; inset: 0; 
+    overflow-y: auto; 
+    -webkit-overflow-scrolling: touch;
+    display: none;
+    padding-bottom: calc(var(--tab-h) + var(--safe-bottom) + 16px);
+  }
+  .view.active { display: block; }
+
+  #tabs {
+    flex-shrink: 0;
+    display: flex;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding-bottom: var(--safe-bottom);
+    height: calc(var(--tab-h) + var(--safe-bottom));
+  }
+
+  .tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    padding-top: 8px;
+    transition: all 0.15s;
+    color: var(--text3);
+  }
+  .tab.active { color: var(--accent); }
+  .tab svg { width: 22px; height: 22px; }
+  .tab span { font-size: 12px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; }
+
+  /* ── TODAY VIEW ── */
+  .today-header {
+    padding: 20px 20px 12px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  .today-header h2 { font-size: 28px; font-weight: 800; letter-spacing: -1px; }
+  .today-header .sub { font-size: 16px; color: var(--text2); font-family: 'DM Mono', monospace; }
+
+  .now-indicator {
+    margin: 0 20px 16px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, rgba(124,106,255,0.15), rgba(255,106,158,0.1));
+    border: 1px solid rgba(124,106,255,0.3);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .now-indicator .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    flex-shrink: 0;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .now-indicator .now-text { font-size: 16px; }
+  .now-indicator .now-title { font-weight: 700; color: var(--text); }
+  .now-indicator .now-sub { color: var(--text2); font-size: 12px; font-family: 'DM Mono', monospace; margin-top: 1px; }
+
+  /* Timeline */
+  .timeline { padding: 0 20px; }
+  .tl-block {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 4px;
+    cursor: pointer;
+  }
+  .tl-time {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text3);
+    width: 38px;
+    flex-shrink: 0;
+    padding-top: 10px;
+    text-align: right;
+  }
+  .tl-bar {
+    width: 3px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    min-height: 44px;
+  }
+  .tl-content {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    margin-bottom: 4px;
+    transition: all 0.15s;
+  }
+  .tl-content.current {
+    border-color: rgba(124,106,255,0.4);
+    background: rgba(124,106,255,0.08);
+  }
+  .tl-content .tl-title { font-size: 16px; font-weight: 600; }
+  .tl-content .tl-sub { font-size: 13px; color: var(--text2); margin-top: 2px; font-family: 'DM Mono', monospace; line-height: 1.4; }
+  .tl-content .tl-duration { font-size: 12px; color: var(--text2); margin-top: 3px; font-family: 'DM Mono', monospace; }
+
+  /* Events */
+  .section-label {
+    padding: 16px 20px 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  .event-card {
+    margin: 0 20px 8px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .event-time-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    background: rgba(124,106,255,0.1);
+    padding: 4px 8px;
+    border-radius: 6px;
+    flex-shrink: 0;
+    text-align: center;
+    line-height: 1.3;
+  }
+  .event-title { font-size: 16px; font-weight: 600; }
+  .event-notes { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+  /* Quick capture */
+  .quick-capture {
+    margin: 8px 20px 0;
+    display: flex;
+    gap: 8px;
+  }
+  .quick-capture input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    outline: none;
+  }
+  .quick-capture input:focus { border-color: var(--accent); }
+  .quick-capture input::placeholder { color: var(--text2); }
+  .capture-btn {
+    width: 40px; height: 40px;
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ── TASKS VIEW ── */
+  .task-areas {
+    padding: 16px 20px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .task-areas::-webkit-scrollbar { display: none; }
+
+  .area-chip {
+    flex-shrink: 0;
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    background: var(--surface);
+    color: var(--text2);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .area-chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #ffffff;
+    font-weight: 700;
+  }
+
+  .tasks-list { padding: 0 20px; }
+
+  .task-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .task-item:last-child { border-bottom: none; }
+
+  .task-check {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .task-check.done { 
+    background: var(--self); 
+    border-color: var(--self);
+  }
+  .task-check.done::after { content: '✓'; font-size: 13px; color: #0a0a0f; font-weight: 800; }
+
+  .task-body { flex: 1; }
+  .task-text { font-size: 16px; font-weight: 500; line-height: 1.4; }
+  .task-text.done { text-decoration: line-through; color: var(--text3); }
+  .task-meta {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+  }
+  .task-tag {
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--surface2);
+    color: var(--text3);
+  }
+  .task-tag.urgent { background: rgba(255,106,158,0.15); color: var(--accent2); }
+  .task-tag.deadline { background: rgba(255,169,71,0.15); color: var(--admin); }
+  .task-tag.recurring { background: rgba(124,106,255,0.15); color: var(--accent); }
+
+  .add-task-row {
+    margin: 12px 20px;
+    display: flex;
+    gap: 8px;
+  }
+  .add-task-row input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    outline: none;
+  }
+  .add-task-row input:focus { border-color: var(--accent); }
+  .add-task-row input::placeholder { color: var(--text2); }
+  .add-task-btn {
+    width: 40px; height: 40px;
+    background: var(--accent);
+    border: none; border-radius: 10px;
+    color: white; font-size: 20px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* empty state */
+  .empty-state {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--text3);
+    font-size: 14px;
+  }
+
+  /* ── WEEK VIEW ── */
+  .week-nav {
+    display: flex;
+    align-items: center;
+    padding: 16px 20px 8px;
+    gap: 12px;
+  }
+  .week-nav h2 { flex: 1; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+  .nav-btn {
+    width: 36px; height: 36px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .week-days {
+    display: flex;
+    gap: 6px;
+    padding: 0 20px 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .week-days::-webkit-scrollbar { display: none; }
+
+  .day-pill {
+    flex-shrink: 0;
+    width: 52px;
+    padding: 8px 6px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .day-pill.today { border-color: var(--accent); background: rgba(124,106,255,0.1); }
+  .day-pill.selected { background: var(--accent); border-color: var(--accent); }
+  .day-pill .day-name { font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text2); }
+  .day-pill.selected .day-name { color: #ffffff; }
+  .day-pill .day-num { font-size: 20px; font-weight: 800; margin-top: 2px; }
+  .day-pill .day-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent2); margin: 4px auto 0; }
+
+  .week-sched { padding: 0 20px; }
+
+  /* ── CAPTURE VIEW ── */
+  .capture-form { padding: 20px; }
+  .capture-form h2 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 20px; }
+
+  .form-group { margin-bottom: 16px; }
+  .form-label { 
+    font-size: 13px; 
+    font-weight: 700; 
+    letter-spacing: 1px; 
+    text-transform: uppercase; 
+    color: var(--text3); 
+    margin-bottom: 6px; 
+    display: block; 
+  }
+  .form-input, .form-select, .form-textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    outline: none;
+    -webkit-appearance: none;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); }
+  .form-textarea { min-height: 80px; resize: none; overflow: hidden; }
+  .form-select option { background: var(--surface2); color: var(--text); }
+
+  .area-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .area-option {
+    padding: 10px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .area-option.selected { background: var(--accent); border-color: var(--accent); color: #ffffff; font-weight: 700; }
+
+  .submit-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    border: none;
+    border-radius: 12px;
+    color: #ffffff;
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: opacity 0.15s;
+  }
+  .submit-btn:active { opacity: 0.8; }
+
+  /* ── REVIEW VIEW ── */
+  .review-section {
+    margin: 0 20px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .review-section-header {
+    padding: 12px 16px;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .review-section-header h3 { font-size: 16px; font-weight: 700; }
+  .review-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--text2);
+  }
+  .review-item {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .review-item:last-child { border-bottom: none; }
+  .review-item.done { color: var(--text3); text-decoration: line-through; }
+
+
+  /* ── SYNC ── */
+  .sync-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: background 0.15s;
+  }
+  .sync-indicator:hover { background: rgba(255,255,255,0.06); }
+
+  .sync-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  .sync-dot.unconfigured { background: rgba(255,255,255,0.2); }
+  .sync-dot.connected    { background: #6affb8; box-shadow: 0 0 5px #6affb8; }
+  .sync-dot.syncing      { background: #ffa947; animation: sync-pulse 1s ease-in-out infinite; }
+  .sync-dot.error        { background: #ff6a6a; }
+  @keyframes sync-pulse  { 0%,100%{opacity:0.4} 50%{opacity:1} }
+
+  .sync-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    white-space: nowrap;
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── SYNC MODAL ── */
+  .sync-modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .sync-modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+  .sync-modal {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    padding: 24px 24px calc(var(--safe-bottom) + 24px);
+    width: 100%;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .sync-modal-overlay.open .sync-modal { transform: translateY(0); }
+
+  .sync-modal-handle {
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+  .sync-modal-title {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .sync-modal-close {
+    width: 32px; height: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--text2);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .sync-modal-sub {
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+  .sync-field { margin-bottom: 14px; }
+  .sync-field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 6px;
+    font-family: 'DM Mono', monospace;
+  }
+  .sync-field input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    outline: none;
+    -webkit-appearance: none;
+  }
+  .sync-field input:focus { border-color: var(--accent); }
+
+  .sync-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  .sync-btn-primary {
+    flex: 1;
+    padding: 13px;
+    background: var(--accent);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .sync-btn-secondary {
+    padding: 13px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text2);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .sync-btn-danger {
+    padding: 13px 16px;
+    background: transparent;
+    border: 1px solid rgba(255,106,106,0.3);
+    border-radius: 12px;
+    color: #ff6a6a;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .sync-device-code-display {
+    font-family: 'DM Mono', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 6px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    text-align: center;
+    margin: 16px 0;
+  }
+
+  .sync-step-label {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 6px;
+  }
+
+  .sync-result-msg {
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-top: 10px;
+    display: none;
+  }
+  .sync-result-msg.ok  { background: rgba(106,255,184,0.1); color: var(--self); border: 1px solid rgba(106,255,184,0.2); }
+  .sync-result-msg.err { background: rgba(255,106,106,0.1); color: #ff6a6a; border: 1px solid rgba(255,106,106,0.2); }
+
+  .sync-note {
+    font-size: 12px;
+    color: var(--text3);
+    line-height: 1.7;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .sync-note a { color: var(--text2); }
+
+  .sync-connected-check {
+    font-size: 40px;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+  .sync-connected-title {
+    font-size: 18px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 6px;
+  }
+  .sync-connected-sub {
+    font-size: 13px;
+    color: var(--text2);
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  /* Scrollbar */
+  .view::-webkit-scrollbar { width: 3px; }
+  .view::-webkit-scrollbar-track { background: transparent; }
+  .view::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Animations */
+  .view.active { animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+  .task-item { animation: slideIn 0.15s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- HEADER -->
+  <div id="header">
+    <div class="logo">JodyOS</div>
+    <div class="date-display" id="dateDisplay"></div>
+    <div class="sync-indicator" onclick="openSyncModal()" title="OneDrive sync">
+      <div class="sync-dot unconfigured" id="sync-dot"></div>
+      <div class="sync-label" id="sync-label">tap to sync</div>
+    </div>
+    <div class="med-btn" id="medBtn" onclick="toggleMed()" title="Meds taken?">💊</div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="content">
+
+    <!-- TODAY -->
+    <div class="view active" id="view-today">
+      <div class="today-header">
+        <h2 id="todayTitle">Today</h2>
+        <span class="sub" id="todayDate"></span>
+      </div>
+      <div class="now-indicator" id="nowIndicator">
+        <div class="dot"></div>
+        <div>
+          <div class="now-title" id="nowTitle">Loading...</div>
+          <div class="now-sub" id="nowSub"></div>
+        </div>
+      </div>
+      <div class="section-label">TODAY'S EVENTS</div>
+      <div id="todayEvents"></div>
+      <div class="section-label">QUICK CAPTURE</div>
+      <div class="quick-capture">
+        <input type="text" id="quickInput" placeholder="Capture a thought or task..." />
+        <button class="capture-btn" onclick="quickCapture()">+</button>
+      </div>
+      <div class="section-label">SCHEDULE</div>
+      <div class="timeline" id="timeline"></div>
+    </div>
+
+    <!-- TASKS -->
+    <div class="view" id="view-tasks">
+      <div class="task-areas" id="taskAreas"></div>
+      <div class="add-task-row">
+        <input type="text" id="taskInput" placeholder="Add task to current area..." />
+        <button class="add-task-btn" onclick="addTask()">+</button>
+      </div>
+      <div class="tasks-list" id="tasksList"></div>
+    </div>
+
+    <!-- WEEK -->
+    <div class="view" id="view-week">
+      <div class="week-nav">
+        <button class="nav-btn" onclick="changeWeek(-1)">‹</button>
+        <h2 id="weekLabel"></h2>
+        <button class="nav-btn" onclick="changeWeek(1)">›</button>
+      </div>
+      <div class="week-days" id="weekDays"></div>
+      <div class="week-sched" id="weekSched"></div>
+    </div>
+
+    <!-- CAPTURE -->
+    <div class="view" id="view-capture">
+      <div class="capture-form">
+        <h2>Capture</h2>
+        <div class="form-group">
+          <label class="form-label">Task</label>
+          <input type="text" class="form-input" id="captureText" placeholder="What needs doing?" style="color:var(--text)" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Area</label>
+          <div class="area-grid" id="captureAreaGrid"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Urgency</label>
+          <select class="form-select" id="captureUrgency">
+            <option value="">— none —</option>
+            <option value="high">🔴 High</option>
+            <option value="medium">🟡 Medium</option>
+            <option value="low">🟢 Low</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Deadline</label>
+          <input type="date" class="form-input" id="captureDeadline" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-textarea" id="captureNotes" placeholder="Any context..."></textarea>
+        </div>
+        <button class="submit-btn" onclick="submitCapture()">Add Task</button>
+      </div>
+    </div>
+
+    <!-- REVIEW -->
+    <div class="view" id="view-review">
+      <div class="section-label" style="padding-top:20px">WEEKLY REVIEW</div>
+      <div id="reviewContent"></div>
+    </div>
+
+  </div>
+
+  <!-- TABS -->
+  <div id="tabs">
+    <div class="tab active" onclick="switchTab('today')" id="tab-today">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/>
+      </svg>
+      <span>Today</span>
+    </div>
+    <div class="tab" onclick="switchTab('tasks')" id="tab-tasks">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="9,11 12,14 22,4"/><path d="M21,12v7a2,2,0,0,1-2,2H5a2,2,0,0,1-2-2V5a2,2,0,0,1,2-2h11"/>
+      </svg>
+      <span>Tasks</span>
+    </div>
+    <div class="tab" onclick="switchTab('week')" id="tab-week">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+      </svg>
+      <span>Week</span>
+    </div>
+    <div class="tab" onclick="switchTab('capture')" id="tab-capture">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      <span>Capture</span>
+    </div>
+    <div class="tab" onclick="switchTab('review')" id="tab-review">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14,2H6a2,2,0,0,0-2,2v16a2,2,0,0,0,2,2H18a2,2,0,0,0,2-2V8Z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+      </svg>
+      <span>Review</span>
+    </div>
+  </div>
+
+<!-- ── SYNC MODAL ── -->
+<div class="sync-modal-overlay" id="sync-modal-overlay" onclick="if(event.target===this)closeSyncModal()">
+  <div class="sync-modal">
+    <div class="sync-modal-handle"></div>
+    <div class="sync-modal-title">
+      OneDrive Sync
+      <button class="sync-modal-close" onclick="closeSyncModal()">×</button>
+    </div>
+
+    <!-- Step 1: Setup -->
+    <div id="sync-step-setup">
+      <div class="sync-modal-sub">Sync your data to <strong>OneDrive</strong>. Uses your Microsoft account — no password stored, tokens only.</div>
+      <div class="sync-field">
+        <label>Azure App Client ID</label>
+        <input type="text" id="sync-client-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="sync-field">
+        <label>Device Label</label>
+        <input type="text" id="sync-device" placeholder="iOS" autocomplete="off">
+      </div>
+      <div id="sync-test-result" class="sync-result-msg"></div>
+      <div class="sync-actions">
+        <button class="sync-btn-secondary" onclick="closeSyncModal()">Cancel</button>
+        <button class="sync-btn-primary" onclick="syncStartDeviceFlow()">Connect →</button>
+      </div>
+      <button class="sync-btn-danger" id="sync-clear-btn" onclick="syncClearConfig()" style="display:none">Disconnect OneDrive</button>
+      <div class="sync-note">
+        One-time Azure setup (5 min): Register a free app at <a href="https://portal.azure.com" target="_blank">portal.azure.com</a> → App registrations → New → Personal Microsoft accounts only → add Mobile/Desktop redirect URI: <code>https://login.microsoftonline.com/common/oauth2/nativeclient</code> → copy the Application (client) ID.
+      </div>
+    </div>
+
+    <!-- Step 2: Device code -->
+    <div id="sync-step-code" style="display:none">
+      <div class="sync-step-label">1 · Go to</div>
+      <div style="font-size:17px;font-weight:700;margin-bottom:16px;">microsoft.com/devicelogin</div>
+      <div class="sync-step-label">2 · Enter this code</div>
+      <div class="sync-device-code-display" id="sync-device-code">——————</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:16px;">Sign in with your Microsoft account on any device. This screen polls automatically.</div>
+      <div id="sync-code-result" class="sync-result-msg"></div>
+      <div class="sync-actions">
+        <button class="sync-btn-secondary" onclick="syncCancelDeviceFlow()">Cancel</button>
+        <a href="https://microsoft.com/devicelogin" target="_blank" rel="noopener" style="flex:1;padding:13px;background:var(--accent);border-radius:12px;color:#fff;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;text-decoration:none;text-align:center;display:block;">Open Link ↗</a>
+      </div>
+    </div>
+
+    <!-- Step 3: Connected -->
+    <div id="sync-step-connected" style="display:none">
+      <div class="sync-connected-check">✓</div>
+      <div class="sync-connected-title">Connected to OneDrive</div>
+      <div class="sync-connected-sub" id="sync-connected-info">Syncing to JodyOS/data.json</div>
+      <div id="sync-connected-result" class="sync-result-msg"></div>
+      <div class="sync-actions" style="margin-top:24px;">
+        <button class="sync-btn-secondary" onclick="closeSyncModal()">Close</button>
+        <button class="sync-btn-primary" onclick="syncPushNow()">Sync Now →</button>
+      </div>
+      <button class="sync-btn-danger" onclick="syncClearConfig()">Disconnect</button>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+/**
+ * JodyOS OneDrive Sync Module
+ * Version: 2.0.0
+ *
+ * Bidirectional sync between localStorage (jos_ prefix) and a single
+ * data.json file in OneDrive via the Microsoft Graph API.
+ * Authentication uses the OAuth2 device code flow — no redirect URI,
+ * no server, no secrets stored anywhere except refresh tokens in localStorage.
+ *
+ * ─── Public API ───────────────────────────────────────────────────────────
+ *
+ *   JodySync.init()
+ *     Call once on page load. Pulls remote data if configured and newer.
+ *     Returns { ok, applied?, skipped?, empty?, reason? }
+ *
+ *   JodySync.pull()
+ *     Fetch data.json from OneDrive → apply to localStorage if remote is newer.
+ *     Returns { ok, applied?, skipped?, empty?, reason? }
+ *
+ *   JodySync.push()
+ *     Write localStorage snapshot → OneDrive data.json.
+ *     Returns { ok, reason? }
+ *
+ *   JodySync.schedulePush()
+ *     Debounced push (3s). Call after every localStorage write.
+ *
+ *   JodySync.startDeviceFlow(clientId)
+ *     Starts the device code auth flow.
+ *     Returns { device_code, user_code, verification_uri, expires_in, interval }
+ *
+ *   JodySync.pollDeviceFlow(clientId, deviceCode, interval, onUpdate?)
+ *     Polls for token after user signs in. Saves tokens on success.
+ *     onUpdate(status) called with 'pending' | 'network_error' each poll.
+ *     Returns { ok, reason? }
+ *
+ *   JodySync.cancelDeviceFlow()
+ *     Cancels an in-progress poll.
+ *
+ *   JodySync.configure({ clientId?, device? })
+ *     Save config values to localStorage.
+ *
+ *   JodySync.clearConfig()
+ *     Remove all sync config. Data is untouched.
+ *
+ *   JodySync.getStatus()
+ *     Returns { configured, device, lastSync, pushing, tokenExpiry }
+ *
+ *   JodySync.onStatusChange(fn)
+ *     Subscribe to status changes. Returns unsubscribe function.
+ *
+ * ─── Config keys (jos_sync_ prefix in localStorage) ──────────────────────
+ *
+ *   jos_sync_client_id      Azure App (client) ID
+ *   jos_sync_access_token   Current access token (expires ~1hr)
+ *   jos_sync_refresh_token  Refresh token (valid 90 days, renews on use)
+ *   jos_sync_token_expiry   ISO timestamp of access token expiry
+ *   jos_sync_last           ISO timestamp of last successful sync
+ *   jos_sync_device         Device label (e.g. "Desktop", "iOS")
+ *
+ * ─── data.json format ────────────────────────────────────────────────────
+ *
+ *   {
+ *     "_meta": { "updated": "ISO", "device": "Desktop", "version": 2 },
+ *     "jos_tasks_creation": "[...]",
+ *     "jos_tasks_admin": "[...]",
+ *     ... all jos_ keys exactly as stored in localStorage
+ *   }
+ *
+ * ─── Azure App setup (one-time, ~5 minutes) ───────────────────────────────
+ *
+ *   1. portal.azure.com → Azure Active Directory → App registrations → New
+ *   2. Supported account types: Personal Microsoft accounts only
+ *   3. Redirect URI: Mobile and desktop applications →
+ *      https://login.microsoftonline.com/common/oauth2/nativeclient
+ *   4. Under Authentication → enable "Allow public client flows" → Yes
+ *   5. Copy the Application (client) ID
+ *
+ * ─── PWA wiring ───────────────────────────────────────────────────────────
+ *
+ *   // After your ls_set / ls_setJSON definitions:
+ *   const _orig = ls_set;
+ *   ls_set = (k, v) => { _orig(k, v); JodySync.schedulePush(); };
+ *
+ *   // On app load:
+ *   JodySync.init().then(r => { if (r.applied) reloadViews(); });
+ */
+
+(function (root, factory) {
+  if (typeof define === 'function' && define.amd) {
+    define([], factory);
+  } else if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.JodySync = factory();
+  }
+}(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+
+  const DATA_PREFIX    = 'jos_';
+  const CONFIG_PREFIX  = 'jos_sync_';
+  const DATA_VERSION   = 2;
+  const PUSH_DEBOUNCE  = 3000;
+  const META_KEY       = '_meta';
+  const GRAPH_FILE_URL = 'https://graph.microsoft.com/v1.0/me/drive/root:/JodyOS/data.json:/content';
+  const TOKEN_URL      = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/token';
+  const DEVICE_URL     = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode';
+  const SCOPE          = 'Files.ReadWrite offline_access';
+
+  let _pushTimer  = null;
+  let _pushing    = false;
+  let _listeners  = [];
+  let _pollCancel = false;
+
+  // ── Config helpers ────────────────────────────────────────────────────────
+  const cfgGet = (k, d = '') => {
+    try { const v = localStorage.getItem(CONFIG_PREFIX + k); return v !== null ? v : d; }
+    catch (e) { return d; }
+  };
+  const cfgSet = (k, v) => { try { localStorage.setItem(CONFIG_PREFIX + k, String(v)); } catch (e) {} };
+  const cfgDel = k       => { try { localStorage.removeItem(CONFIG_PREFIX + k); } catch (e) {} };
+
+  function getConfig() {
+    return {
+      clientId:     cfgGet('client_id'),
+      accessToken:  cfgGet('access_token'),
+      refreshToken: cfgGet('refresh_token'),
+      tokenExpiry:  cfgGet('token_expiry'),
+      last:         cfgGet('last'),
+      device:       cfgGet('device', _defaultDevice()),
+    };
+  }
+
+  function isConfigured() {
+    const c = getConfig();
+    return !!(c.clientId && c.refreshToken);
+  }
+
+  function _defaultDevice() {
+    try {
+      const ua = navigator.userAgent;
+      if (/iPhone|iPad/.test(ua)) return 'iOS';
+      if (/Android/.test(ua))     return 'Android';
+      if (/Mac/.test(ua))         return 'Mac';
+      if (/Win/.test(ua))         return 'Windows';
+    } catch (e) {}
+    return 'Desktop';
+  }
+
+  // ── Token management ──────────────────────────────────────────────────────
+  function _isTokenExpired() {
+    const expiry = cfgGet('token_expiry');
+    if (!expiry) return true;
+    return Date.now() > new Date(expiry).getTime() - 60000;
+  }
+
+  async function _refreshAccessToken() {
+    const c = getConfig();
+    if (!c.clientId || !c.refreshToken) throw new Error('No refresh token available');
+    const body = new URLSearchParams({
+      client_id:     c.clientId,
+      grant_type:    'refresh_token',
+      refresh_token: c.refreshToken,
+      scope:         SCOPE,
+    });
+    const res = await fetch(TOKEN_URL, { method: 'POST', body });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw Object.assign(new Error('Token refresh failed: ' + res.status), { status: res.status, body: txt });
+    }
+    const j = await res.json();
+    cfgSet('access_token',  j.access_token);
+    cfgSet('refresh_token', j.refresh_token || c.refreshToken);
+    cfgSet('token_expiry',  new Date(Date.now() + j.expires_in * 1000).toISOString());
+    return j.access_token;
+  }
+
+  async function _getToken() {
+    if (_isTokenExpired()) return _refreshAccessToken();
+    return cfgGet('access_token');
+  }
+
+  // ── Device code flow ──────────────────────────────────────────────────────
+  async function startDeviceFlow(clientId) {
+    const body = new URLSearchParams({ client_id: clientId, scope: SCOPE });
+    const res  = await fetch(DEVICE_URL, { method: 'POST', body });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error('Device code request failed (' + res.status + '): ' + txt);
+    }
+    return res.json();
+  }
+
+  async function pollDeviceFlow(clientId, deviceCode, interval, onUpdate) {
+    _pollCancel  = false;
+    const waitMs = Math.max((interval || 5) + 1, 5) * 1000;
+    const wait   = ms => new Promise(r => setTimeout(r, ms));
+
+    while (!_pollCancel) {
+      await wait(waitMs);
+      if (_pollCancel) break;
+
+      try {
+        const body = new URLSearchParams({
+          client_id:   clientId,
+          grant_type:  'urn:ietf:params:oauth:grant-type:device_code',
+          device_code: deviceCode,
+        });
+        const res = await fetch(TOKEN_URL, { method: 'POST', body });
+        const j   = await res.json();
+
+        if (j.access_token) {
+          cfgSet('client_id',     clientId);
+          cfgSet('access_token',  j.access_token);
+          cfgSet('refresh_token', j.refresh_token);
+          cfgSet('token_expiry',  new Date(Date.now() + j.expires_in * 1000).toISOString());
+          _notify();
+          return { ok: true };
+        }
+
+        if (j.error === 'authorization_pending') { if (onUpdate) onUpdate('pending'); continue; }
+        if (j.error === 'slow_down')             { await wait(5000); continue; }
+
+        return { ok: false, reason: j.error_description || j.error || 'unknown' };
+
+      } catch (e) {
+        if (onUpdate) onUpdate('network_error');
+      }
+    }
+    return { ok: false, reason: 'cancelled' };
+  }
+
+  function cancelDeviceFlow() { _pollCancel = true; }
+
+  // ── Data snapshot ─────────────────────────────────────────────────────────
+  function _snapshot() {
+    const data = {};
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(DATA_PREFIX) && !k.startsWith(CONFIG_PREFIX)) {
+          data[k] = localStorage.getItem(k);
+        }
+      }
+    } catch (e) {}
+    return data;
+  }
+
+  function _apply(data) {
+    try {
+      Object.entries(data).forEach(([k, v]) => {
+        if (k.startsWith(DATA_PREFIX) && !k.startsWith(CONFIG_PREFIX) && k !== META_KEY) {
+          localStorage.setItem(k, v);
+        }
+      });
+    } catch (e) { console.warn('[JodySync] apply failed:', e); }
+  }
+
+  // ── Graph API ─────────────────────────────────────────────────────────────
+  async function _graphGet() {
+    const token = await _getToken();
+    const res   = await fetch(GRAPH_FILE_URL, { headers: { 'Authorization': 'Bearer ' + token } });
+    if (res.status === 404) return null;
+    if (!res.ok) throw Object.assign(new Error('Graph GET ' + res.status), { status: res.status });
+    return res.text();
+  }
+
+  async function _graphPut(content) {
+    const token = await _getToken();
+    const res   = await fetch(GRAPH_FILE_URL, {
+      method:  'PUT',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body:    content,
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw Object.assign(new Error('Graph PUT ' + res.status), { status: res.status, body: txt });
+    }
+    return true;
+  }
+
+  // ── Status ────────────────────────────────────────────────────────────────
+  function _notify() { _listeners.forEach(fn => { try { fn(getStatus()); } catch (e) {} }); }
+
+  function getStatus() {
+    const c = getConfig();
+    return {
+      configured:  isConfigured(),
+      device:      c.device,
+      lastSync:    c.last        || null,
+      tokenExpiry: c.tokenExpiry || null,
+      pushing:     _pushing,
+    };
+  }
+
+  function onStatusChange(fn) {
+    _listeners.push(fn);
+    return () => { _listeners = _listeners.filter(f => f !== fn); };
+  }
+
+  // ── PULL ──────────────────────────────────────────────────────────────────
+  async function pull() {
+    if (!isConfigured()) return { ok: false, reason: 'not_configured' };
+    try {
+      const raw = await _graphGet();
+      if (!raw) return { ok: true, empty: true };
+
+      const remote     = JSON.parse(raw);
+      const remoteMeta = remote[META_KEY] || {};
+      const remoteTime = remoteMeta.updated ? new Date(remoteMeta.updated).getTime() : 0;
+      const lastTime   = cfgGet('last') ? new Date(cfgGet('last')).getTime() : 0;
+
+      if (remoteTime <= lastTime) return { ok: true, skipped: true };
+
+      _apply(remote);
+      cfgSet('last', remoteMeta.updated || new Date().toISOString());
+      _notify();
+      return { ok: true, applied: true, device: remoteMeta.device };
+
+    } catch (e) {
+      console.warn('[JodySync] pull failed:', e);
+      return { ok: false, reason: e.message };
+    }
+  }
+
+  // ── PUSH ──────────────────────────────────────────────────────────────────
+  async function push() {
+    if (!isConfigured()) return { ok: false, reason: 'not_configured' };
+    if (_pushing)        return { ok: false, reason: 'already_pushing' };
+
+    _pushing = true;
+    _notify();
+
+    const now = new Date().toISOString();
+    try {
+      const snapshot   = _snapshot();
+      snapshot[META_KEY] = { updated: now, device: cfgGet('device', _defaultDevice()), version: DATA_VERSION };
+      await _graphPut(JSON.stringify(snapshot, null, 2));
+      cfgSet('last', now);
+      _pushing = false;
+      _notify();
+      return { ok: true };
+
+    } catch (e) {
+      _pushing = false;
+      _notify();
+      console.warn('[JodySync] push failed:', e);
+      return { ok: false, reason: e.message };
+    }
+  }
+
+  // ── SCHEDULED PUSH ────────────────────────────────────────────────────────
+  function schedulePush() {
+    if (!isConfigured()) return;
+    clearTimeout(_pushTimer);
+    _pushTimer = setTimeout(() => push(), PUSH_DEBOUNCE);
+  }
+
+  // ── CONFIG ────────────────────────────────────────────────────────────────
+  function configure({ clientId, device } = {}) {
+    if (clientId) cfgSet('client_id', clientId.trim());
+    if (device)   cfgSet('device',    device.trim());
+    _notify();
+  }
+
+  function clearConfig() {
+    ['client_id','access_token','refresh_token','token_expiry','last','device'].forEach(k => cfgDel(k));
+    _notify();
+  }
+
+  // ── INIT ──────────────────────────────────────────────────────────────────
+  async function init() {
+    if (!isConfigured()) return { ok: false, reason: 'not_configured' };
+    return pull();
+  }
+
+  // ── Public API ────────────────────────────────────────────────────────────
+  return {
+    init,
+    pull,
+    push,
+    schedulePush,
+    configure,
+    clearConfig,
+    getStatus,
+    onStatusChange,
+    startDeviceFlow,
+    pollDeviceFlow,
+    cancelDeviceFlow,
+    _snapshot,
+  };
+
+}));
+
+</script>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────────
+const AREAS = [
+  { key: 'creation', label: 'Creation', color: 'var(--creation)' },
+  { key: 'external', label: 'External', color: 'var(--external)' },
+  { key: 'admin',    label: 'Admin',    color: 'var(--admin)' },
+  { key: 'home',     label: 'Home',     color: 'var(--home)' },
+  { key: 'money',    label: 'Money',    color: 'var(--self)' },
+  { key: 'legacy',   label: 'Legacy',   color: 'var(--legacy)' },
+  { key: 'self',     label: 'Self',     color: 'var(--self)' },
+];
+
+const SCHED_WEEKDAY = [
+  { start:7,   end:7.5,  type:'self',     label:'Self',     title:'Transition + Self Check',    sub:'Movement, coffee, set One Action · ADHD check-in' },
+  { start:7.5, end:11.5, type:'creation', label:'Creation', title:'Deep Work — Escheron',       sub:'Build, strategy, engineering · peak med window' },
+  { start:11.5,end:12,   type:'admin',    label:'Admin',    title:'Admin Container · 25 min',   sub:'Bills, compliance, mechanical tasks' },
+  { start:12,  end:13,   type:'family',   label:'Break',    title:'Lunch',                      sub:'Protein-rich · step away from desk' },
+  { start:13,  end:15,   type:'external', label:'External', title:'External Container',         sub:'Meetings, responses, coordination' },
+  { start:15,  end:15.5, type:'legacy',   label:'Legacy',   title:'Legacy Container · 25 min', sub:'Old/sticky: close, decide, delegate, break down' },
+  { start:15.5,end:16,   type:'home',     label:'Home',     title:'Admin + Home · 25 min',      sub:'Admin second pass + house/family tasks' },
+  { start:16,  end:17.5, type:'creation', label:'Creation', title:'Light Creation / Review',    sub:'Lower-intensity build · taper beginning' },
+  { start:17.5,end:18,   type:'family',   label:'Wrap',     title:'Shutdown Ritual',            sub:'Write completion + set tomorrow\'s action' },
+  { start:18,  end:21,   type:'family',   label:'Family',   title:'Family Time — Protected',    sub:'No work, no decisions' },
+  { start:21,  end:21.5, type:'shutdown', label:'Sleep',    title:'Wind Down',                  sub:'No screens · target 9:30–10pm sleep' },
+];
+
+const SCHED_WEEKEND = [
+  { start:7,   end:9.5,  type:'family',   label:'Family',   title:'Weekend Morning',            sub:'Meds optional on weekends' },
+  { start:9.5, end:12,   type:'creation', label:'Creation', title:'Optional Creation Window',   sub:'Catch-up or passion projects — no pressure' },
+  { start:12,  end:12.5, type:'legacy',   label:'Legacy',   title:'Legacy Container (optional)',sub:'25 min · clear one old item' },
+  { start:12.5,end:21,   type:'family',   label:'Family',   title:'Family & Rest',              sub:'Protected weekend time' },
+  { start:21,  end:21.5, type:'shutdown', label:'Sleep',    title:'Wind Down',                  sub:'' },
+];
+
+// ── STORAGE ───────────────────────────────────────────────────────────────
+function load(key, fallback) {
+  try { const v = localStorage.getItem('jos_' + key); return v ? JSON.parse(v) : fallback; }
+  catch { return fallback; }
+}
+function save(key, val) {
+  try { localStorage.setItem('jos_' + key, JSON.stringify(val)); if (typeof JodySync !== 'undefined') JodySync.schedulePush(); } catch {}
+}
+
+// Import backup data on first load
+function importBackup() {
+  if (load('imported', false)) return;
+  const backup = {"tasks_creation":[{"id":"1773371522443","text":"Apply to GLG, Tegus, Coleman, and Guidepoint","done":false},{"id":1773277104242,"text":"Build Demo Extruder Control Software","done":false},{"id":"1773371595207","text":"Build an Upwork profile","done":false},{"id":1773277132570,"text":"Build Release Extruder Control Software","done":false},{"id":1773573008572,"text":"LinkedIn Posts","done":false},{"id":1774273964351,"text":"Niehoff braider design","done":false},{"id":1774273976724,"text":"WTM wrapping machine design","done":false}],"tasks_external":[{"id":"1773253615327","text":"Apply for Canada Permanent Residence","done":false},{"id":"1773256623919","text":"Quote Trough, Payoff, Takeup","done":false},{"id":"1773256690912","text":"Design PTFE Extruder, Preform Press, Etcher","done":false},{"id":"1773256603579","text":"Revise XYZ Invoices","done":false},{"id":"1773256580281","text":"Negotiate Settlement with Mao","done":false},{"id":"1773279018784","text":"Invoices to Rob - Coils, Extruder Parts","done":false},{"id":"1773279047193","text":"Find Evaporators for Rob","done":false},{"id":1774273996836,"text":"Biomerics follow-up","done":false}],"tasks_admin":[{"id":1773424529820,"text":"Review e-mails/portals and quick reply or log","done":false,"recurring":true,"recurFreq":"daily"},{"id":1773573034783,"text":"Expense reports to Odoo","done":false,"recurring":true,"recurFreq":"daily"}],"tasks_home":[{"id":1773279447599,"text":"Sell CR-V?","done":false},{"id":"1773262413472","text":"Will/Living Will/Trusts","done":false},{"id":1773278686123,"text":"Request China Police Certificate","done":false},{"id":"1773277836622","text":"US Passport Application","done":false,"deadline":"2026-04-25"},{"id":"1773277849679","text":"Canada Passport Application","done":false,"deadline":"2026-04-25"}],"tasks_money":[{"id":1773345117382,"text":"Review Credit Card Statements","done":false,"recurring":true,"recurFreq":"weekly"},{"id":"1773275098190","text":"Review Metier HK Bookkeeping - 2024","done":false},{"id":"1773275185316","text":"Complete 2025 Bookkeeping","done":false},{"id":"1773253508428","text":"File business taxes - Wilderwood LLC (by 9/15)","done":false},{"id":"1773253549933","text":"File business taxes - Wuguo Holdings LLC (by 9/15)","done":false},{"id":"1773253563569","text":"File business taxes - Metier SCM USA LLC (by 9/15)","done":false},{"id":"1773256685286","text":"File personal taxes (by 10/15)","done":false},{"id":"1773276462664","text":"Metier HK Audit and Profit Tax","done":false,"deadline":"2026-04-30"},{"id":"1773278790335","text":"Plan Financial Future","done":false}],"tasks_legacy":[{"id":"1773277561279","text":"Clean Mailboxes","done":false},{"id":"1773278867227","text":"Dissolve Wilderwood, MUS?","done":false},{"id":"1773278923583","text":"Business Renewals - Wilderwood, MUS, Wuguo, FluorNEX","done":false},{"id":"1773279299928","text":"Audi Repairs/Ceramic","done":false}],"tasks_self":[{"id":1773424334385,"text":"Claude Training Class","done":false,"recurring":true,"recurFreq":"daily"}]};
+  
+  Object.entries(backup).forEach(([k, v]) => save(k, v));
+  save('imported', true);
+}
+
+// ── STATE ─────────────────────────────────────────────────────────────────
+importBackup();
+
+let currentTab = 'today';
+let currentTaskArea = 'creation';
+let weekOffset = load('weekOffset', 0);
+let selectedWeekDay = null;
+let captureArea = 'creation';
+
+// ── HELPERS ───────────────────────────────────────────────────────────────
+function today() { return new Date(); }
+function dateKey(d) { return d.toISOString().split('T')[0]; }
+function dayOfWeek(d) { return d.getDay(); } // 0=Sun
+function isWeekend(d) { const dow = dayOfWeek(d); return dow === 0 || dow === 6; }
+
+function fmtTime(h) {
+  const hr = Math.floor(h);
+  const mn = Math.round((h - hr) * 60);
+  const ampm = hr < 12 ? 'am' : 'pm';
+  const h12 = hr % 12 || 12;
+  return mn ? `${h12}:${String(mn).padStart(2,'0')}${ampm}` : `${h12}${ampm}`;
+}
+
+function fmtDate(d) {
+  return d.toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' });
+}
+
+function getSchedule(d) {
+  return isWeekend(d) ? SCHED_WEEKEND : SCHED_WEEKDAY;
+}
+
+function getCurrentBlock(sched) {
+  const now = today();
+  const h = now.getHours() + now.getMinutes() / 60;
+  return sched.find(b => h >= b.start && h < b.end) || null;
+}
+
+function getTypeColor(type) {
+  const map = { creation:'var(--creation)', family:'var(--family)', admin:'var(--admin)', external:'var(--external)', legacy:'var(--legacy)', self:'var(--self)', shutdown:'var(--shutdown)', home:'var(--home)' };
+  return map[type] || 'var(--text3)';
+}
+
+// ── MED TRACKER ───────────────────────────────────────────────────────────
+function toggleMed() {
+  const key = 'med_' + dateKey(today());
+  const current = load(key, false);
+  save(key, !current);
+  renderMedBtn();
+}
+
+function renderMedBtn() {
+  const key = 'med_' + dateKey(today());
+  const taken = load(key, false);
+  const btn = document.getElementById('medBtn');
+  btn.className = 'med-btn' + (taken ? ' taken' : '');
+  btn.title = taken ? 'Meds taken ✓' : 'Meds not logged';
+}
+
+// ── HEADER ────────────────────────────────────────────────────────────────
+function renderHeader() {
+  const now = today();
+  document.getElementById('dateDisplay').innerHTML = 
+    `${now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}<br>${now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`;
+  renderMedBtn();
+}
+
+// ── TODAY VIEW ────────────────────────────────────────────────────────────
+function renderToday() {
+  const now = today();
+  const sched = getSchedule(now);
+  const current = getCurrentBlock(sched);
+
+  // Header
+  document.getElementById('todayTitle').textContent = now.toLocaleDateString('en-US', { weekday: 'long' });
+  document.getElementById('todayDate').textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  // Now indicator
+  if (current) {
+    document.getElementById('nowTitle').textContent = current.title;
+    document.getElementById('nowSub').textContent = `Until ${fmtTime(current.end)} · ${current.label}`;
+    document.getElementById('nowIndicator').style.borderColor = getTypeColor(current.type).replace('var(--','').replace(')','');
+  } else {
+    document.getElementById('nowTitle').textContent = 'Outside scheduled hours';
+    document.getElementById('nowSub').textContent = '';
+  }
+
+  // Events
+  const evKey = dateKey(now);
+  const events = load('events_' + evKey, []);
+  const evContainer = document.getElementById('todayEvents');
+  if (events.length === 0) {
+    evContainer.innerHTML = '<div class="empty-state">No events today</div>';
+  } else {
+    evContainer.innerHTML = events.map(e => `
+      <div class="event-card">
+        <div class="event-time-badge">${e.start}<br>${e.end}</div>
+        <div>
+          <div class="event-title">${e.title}</div>
+          ${e.notes ? `<div class="event-notes">${e.notes}</div>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Timeline
+  const nowH = now.getHours() + now.getMinutes() / 60;
+  const tlEl = document.getElementById('timeline');
+  tlEl.innerHTML = sched.map(block => {
+    const isCurrent = current && block.start === current.start;
+    const isPast = block.end < nowH;
+    const dur = block.end - block.start;
+    const hrs = Math.floor(dur);
+    const mins = Math.round((dur - hrs) * 60);
+    const durStr = hrs > 0 ? (mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`) : `${mins}m`;
+    
+    return `
+      <div class="tl-block">
+        <div class="tl-time" style="opacity:${isPast?0.4:1}">${fmtTime(block.start)}</div>
+        <div class="tl-bar" style="background:${getTypeColor(block.type)};opacity:${isPast?0.3:1}"></div>
+        <div class="tl-content ${isCurrent?'current':''}" style="opacity:${isPast?0.5:1}">
+          <div class="tl-title">${block.title}</div>
+          ${block.sub ? `<div class="tl-sub">${block.sub}</div>` : ''}
+          <div class="tl-duration">${fmtTime(block.start)} – ${fmtTime(block.end)} · ${durStr}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── QUICK CAPTURE ─────────────────────────────────────────────────────────
+function quickCapture() {
+  const input = document.getElementById('quickInput');
+  const text = input.value.trim();
+  if (!text) return;
+  
+  const tasks = load('tasks_creation', []);
+  tasks.unshift({ id: Date.now(), text, done: false, added: new Date().toISOString() });
+  save('tasks_creation', tasks);
+  input.value = '';
+  
+  // Brief feedback
+  const btn = document.querySelector('.capture-btn');
+  btn.textContent = '✓';
+  btn.style.background = 'var(--self)';
+  setTimeout(() => { btn.textContent = '+'; btn.style.background = 'var(--accent)'; }, 1000);
+}
+
+// ── TASKS VIEW ────────────────────────────────────────────────────────────
+function renderTaskAreas() {
+  const container = document.getElementById('taskAreas');
+  container.innerHTML = AREAS.map(a => `
+    <div class="area-chip ${a.key === currentTaskArea ? 'active' : ''}" 
+         onclick="selectTaskArea('${a.key}')"
+         style="${a.key === currentTaskArea ? `background:${a.color};border-color:${a.color}` : ''}">
+      ${a.label}
+    </div>
+  `).join('');
+}
+
+function selectTaskArea(key) {
+  currentTaskArea = key;
+  renderTaskAreas();
+  renderTasksList();
+}
+
+function renderTasksList() {
+  const tasks = load('tasks_' + currentTaskArea, []);
+  const container = document.getElementById('tasksList');
+  
+  if (tasks.length === 0) {
+    container.innerHTML = '<div class="empty-state">No tasks in this area</div>';
+    return;
+  }
+
+  const sorted = [...tasks].sort((a, b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
+    if (a.urgency === 'high' && b.urgency !== 'high') return -1;
+    if (b.urgency === 'high' && a.urgency !== 'high') return 1;
+    return 0;
+  });
+
+  container.innerHTML = sorted.map(t => `
+    <div class="task-item" onclick="toggleTask('${currentTaskArea}', ${t.id})">
+      <div class="task-check ${t.done ? 'done' : ''}"></div>
+      <div class="task-body">
+        <div class="task-text ${t.done ? 'done' : ''}">${t.text}</div>
+        <div class="task-meta">
+          ${t.recurring ? `<span class="task-tag recurring">↻ ${t.recurFreq || 'recurring'}</span>` : ''}
+          ${t.urgency === 'high' ? `<span class="task-tag urgent">🔴 urgent</span>` : ''}
+          ${t.deadline ? `<span class="task-tag deadline">⏰ ${t.deadline}</span>` : ''}
+          ${t.delegateTo ? `<span class="task-tag">→ ${t.delegateTo}</span>` : ''}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleTask(area, id) {
+  const tasks = load('tasks_' + area, []);
+  const task = tasks.find(t => t.id == id);
+  if (task) { task.done = !task.done; save('tasks_' + area, tasks); }
+  renderTasksList();
+}
+
+function addTask() {
+  const input = document.getElementById('taskInput');
+  const text = input.value.trim();
+  if (!text) return;
+  const tasks = load('tasks_' + currentTaskArea, []);
+  tasks.unshift({ id: Date.now(), text, done: false, added: new Date().toISOString() });
+  save('tasks_' + currentTaskArea, tasks);
+  input.value = '';
+  renderTasksList();
+}
+
+// ── WEEK VIEW ─────────────────────────────────────────────────────────────
+function renderWeek() {
+  const now = today();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay() + 1 + weekOffset * 7); // Mon
+  weekStart.setHours(0,0,0,0);
+
+  document.getElementById('weekLabel').textContent = 
+    weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' – ' +
+    new Date(weekStart.getTime() + 6*86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  const days = Array.from({length:7}, (_,i) => new Date(weekStart.getTime() + i*86400000));
+  
+  if (!selectedWeekDay) selectedWeekDay = dateKey(now);
+
+  const daysEl = document.getElementById('weekDays');
+  daysEl.innerHTML = days.map(d => {
+    const key = dateKey(d);
+    const isToday = key === dateKey(now);
+    const isSelected = key === selectedWeekDay;
+    const events = load('events_' + key, []);
+    return `
+      <div class="day-pill ${isToday?'today':''} ${isSelected?'selected':''}" onclick="selectWeekDay('${key}')">
+        <div class="day-name">${d.toLocaleDateString('en-US',{weekday:'short'})}</div>
+        <div class="day-num">${d.getDate()}</div>
+        ${events.length ? '<div class="day-dot"></div>' : '<div style="height:8px"></div>'}
+      </div>
+    `;
+  }).join('');
+
+  renderWeekDaySched();
+}
+
+function selectWeekDay(key) {
+  selectedWeekDay = key;
+  renderWeek();
+}
+
+function renderWeekDaySched() {
+  if (!selectedWeekDay) return;
+  const d = new Date(selectedWeekDay + 'T12:00:00');
+  const sched = getSchedule(d);
+  const events = load('events_' + selectedWeekDay, []);
+  
+  const el = document.getElementById('weekSched');
+  let html = '';
+  
+  if (events.length) {
+    html += '<div class="section-label">EVENTS</div>';
+    html += events.map(e => `
+      <div class="event-card" style="margin-bottom:8px">
+        <div class="event-time-badge">${e.start}<br>${e.end}</div>
+        <div><div class="event-title">${e.title}</div>${e.notes?`<div class="event-notes">${e.notes}</div>`:''}</div>
+      </div>
+    `).join('');
+  }
+
+  html += '<div class="section-label">SCHEDULE</div>';
+  html += sched.map(block => `
+    <div class="tl-block" style="margin-bottom:4px">
+      <div class="tl-time">${fmtTime(block.start)}</div>
+      <div class="tl-bar" style="background:${getTypeColor(block.type)}"></div>
+      <div class="tl-content">
+        <div class="tl-title">${block.title}</div>
+        ${block.sub ? `<div class="tl-sub">${block.sub}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  el.innerHTML = html;
+}
+
+function changeWeek(dir) {
+  weekOffset += dir;
+  save('weekOffset', weekOffset);
+  renderWeek();
+}
+
+// ── CAPTURE VIEW ──────────────────────────────────────────────────────────
+function renderCapture() {
+  const grid = document.getElementById('captureAreaGrid');
+  grid.innerHTML = AREAS.map(a => `
+    <div class="area-option ${a.key === captureArea ? 'selected' : ''}" 
+         onclick="selectCaptureArea('${a.key}')"
+         style="${a.key === captureArea ? `background:${a.color};border-color:${a.color}` : ''}">
+      ${a.label}
+    </div>
+  `).join('');
+}
+
+function selectCaptureArea(key) {
+  captureArea = key;
+  renderCapture();
+}
+
+function submitCapture() {
+  const text = document.getElementById('captureText').value.trim();
+  if (!text) return;
+  
+  const urgency = document.getElementById('captureUrgency').value;
+  const deadline = document.getElementById('captureDeadline').value;
+  const notes = document.getElementById('captureNotes').value.trim();
+  
+  const tasks = load('tasks_' + captureArea, []);
+  tasks.unshift({
+    id: Date.now(),
+    text,
+    done: false,
+    added: new Date().toISOString(),
+    ...(urgency && { urgency }),
+    ...(deadline && { deadline }),
+    ...(notes && { notes }),
+  });
+  save('tasks_' + captureArea, tasks);
+  
+  // Reset
+  document.getElementById('captureText').value = '';
+  document.getElementById('captureUrgency').value = '';
+  document.getElementById('captureDeadline').value = '';
+  document.getElementById('captureNotes').value = '';
+  
+  // Switch to tasks view
+  switchTab('tasks');
+  selectTaskArea(captureArea);
+}
+
+// ── REVIEW VIEW ───────────────────────────────────────────────────────────
+function renderReview() {
+  const el = document.getElementById('reviewContent');
+  let html = '';
+
+  AREAS.forEach(area => {
+    const tasks = load('tasks_' + area.key, []);
+    const open = tasks.filter(t => !t.done);
+    const done = tasks.filter(t => t.done);
+    
+    if (tasks.length === 0) return;
+
+    html += `
+      <div class="review-section">
+        <div class="review-section-header">
+          <h3 style="color:${area.color}">${area.label}</h3>
+          <span class="review-count">${open.length} open · ${done.length} done</span>
+        </div>
+        ${open.slice(0,5).map(t => `
+          <div class="review-item">
+            <div style="width:6px;height:6px;border-radius:50%;background:${area.color};flex-shrink:0"></div>
+            ${t.text}
+          </div>
+        `).join('')}
+        ${open.length > 5 ? `<div class="review-item" style="color:var(--text3);font-style:italic">+${open.length-5} more...</div>` : ''}
+      </div>
+    `;
+  });
+
+  el.innerHTML = html || '<div class="empty-state">Nothing to review — nice work.</div>';
+}
+
+// ── TAB SWITCHING ─────────────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+
+  if (tab === 'today') renderToday();
+  if (tab === 'tasks') { renderTaskAreas(); renderTasksList(); }
+  if (tab === 'week') renderWeek();
+  if (tab === 'capture') renderCapture();
+  if (tab === 'review') renderReview();
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+function init() {
+  renderHeader();
+  renderToday();
+  
+  // Update time every minute
+  setInterval(() => {
+    renderHeader();
+    if (currentTab === 'today') renderToday();
+  }, 60000);
+
+  // Enter key handlers
+  document.getElementById('quickInput').addEventListener('keydown', e => { if (e.key === 'Enter') quickCapture(); });
+  document.getElementById('taskInput').addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+
+
+// ── SYNC UI ───────────────────────────────────────────────────────────────
+function syncUpdateStatus() {
+  const s   = JodySync.getStatus();
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  if (!dot || !lbl) return;
+
+  if (!s.configured) {
+    dot.className = 'sync-dot unconfigured';
+    lbl.textContent = 'tap to sync';
+    return;
+  }
+  if (s.pushing) {
+    dot.className = 'sync-dot syncing';
+    lbl.textContent = 'syncing…';
+    return;
+  }
+  dot.className = 'sync-dot connected';
+  if (s.lastSync) {
+    const diffMin = Math.round((Date.now() - new Date(s.lastSync)) / 60000);
+    lbl.textContent = diffMin < 2 ? 'just now'
+      : diffMin < 60 ? diffMin + 'm ago'
+      : Math.round(diffMin/60) + 'h ago';
+  } else {
+    lbl.textContent = 'connected';
+  }
+}
+
+function _showSyncMsg(elId, ok, msg) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.className = 'sync-result-msg ' + (ok ? 'ok' : 'err');
+  el.style.display = 'block';
+  el.textContent = (ok ? '✓ ' : '✕ ') + msg;
+}
+
+let _syncDeviceFlowActive = false;
+
+function openSyncModal() {
+  const s = JodySync.getStatus();
+  ['sync-step-setup','sync-step-code','sync-step-connected'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  ['sync-test-result','sync-code-result','sync-connected-result'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+
+  if (s.configured) {
+    document.getElementById('sync-step-connected').style.display = 'block';
+    const info = document.getElementById('sync-connected-info');
+    if (info) {
+      const last = s.lastSync ? new Date(s.lastSync).toLocaleString() : 'never';
+      info.textContent = 'Syncing to JodyOS/data.json · Last: ' + last;
+    }
+  } else {
+    document.getElementById('sync-step-setup').style.display = 'block';
+    const cidEl = document.getElementById('sync-client-id');
+    const storedCid = localStorage.getItem('jos_sync_client_id');
+    if (cidEl && storedCid) cidEl.value = storedCid;
+    const devEl = document.getElementById('sync-device');
+    if (devEl) devEl.value = s.device || 'iOS';
+    const clearBtn = document.getElementById('sync-clear-btn');
+    if (clearBtn) clearBtn.style.display = storedCid ? 'block' : 'none';
+  }
+  document.getElementById('sync-modal-overlay').classList.add('open');
+}
+
+function closeSyncModal() {
+  if (_syncDeviceFlowActive) syncCancelDeviceFlow();
+  document.getElementById('sync-modal-overlay').classList.remove('open');
+}
+
+async function syncStartDeviceFlow() {
+  const clientId = (document.getElementById('sync-client-id').value || '').trim();
+  const device   = (document.getElementById('sync-device').value || '').trim() || 'iOS';
+  if (!clientId) {
+    _showSyncMsg('sync-test-result', false, 'Please enter your Azure App Client ID.');
+    return;
+  }
+  JodySync.configure({ clientId, device });
+  try {
+    const flow = await JodySync.startDeviceFlow(clientId);
+    document.getElementById('sync-step-setup').style.display = 'none';
+    document.getElementById('sync-step-code').style.display = 'block';
+    const codeEl = document.getElementById('sync-device-code');
+    if (codeEl) codeEl.textContent = flow.user_code;
+    _syncDeviceFlowActive = true;
+    const result = await JodySync.pollDeviceFlow(clientId, flow.device_code, flow.interval);
+    _syncDeviceFlowActive = false;
+    if (result.ok) {
+      document.getElementById('sync-step-code').style.display = 'none';
+      document.getElementById('sync-step-connected').style.display = 'block';
+      syncUpdateStatus();
+      const pullResult = await JodySync.pull();
+      if (pullResult.applied) reloadAllViews();
+      await JodySync.push();
+      syncUpdateStatus();
+      const info = document.getElementById('sync-connected-info');
+      if (info) info.textContent = 'Connected · synced just now';
+    } else {
+      document.getElementById('sync-step-code').style.display = 'none';
+      document.getElementById('sync-step-setup').style.display = 'block';
+      _showSyncMsg('sync-test-result', false, 'Sign-in failed: ' + (result.reason || 'unknown'));
+    }
+  } catch(e) {
+    document.getElementById('sync-step-code').style.display = 'none';
+    document.getElementById('sync-step-setup').style.display = 'block';
+    _syncDeviceFlowActive = false;
+    _showSyncMsg('sync-test-result', false, 'Error: ' + e.message);
+  }
+}
+
+function syncCancelDeviceFlow() {
+  JodySync.cancelDeviceFlow();
+  _syncDeviceFlowActive = false;
+  document.getElementById('sync-step-code').style.display = 'none';
+  document.getElementById('sync-step-setup').style.display = 'block';
+}
+
+async function syncPushNow() {
+  const result = await JodySync.push();
+  syncUpdateStatus();
+  if (!result.ok) _showSyncMsg('sync-connected-result', false, 'Push failed: ' + result.reason);
+  else _showSyncMsg('sync-connected-result', true, 'Synced successfully');
+}
+
+function syncClearConfig() {
+  if (!confirm('Disconnect OneDrive sync? Your local data is untouched.')) return;
+  JodySync.clearConfig();
+  closeSyncModal();
+  syncUpdateStatus();
+}
+
+// Reload all visible views after a sync pull
+function reloadAllViews() {
+  if (currentTab === 'today')  renderToday();
+  if (currentTab === 'tasks')  { renderTaskAreas(); renderTasksList(); }
+  if (currentTab === 'week')   renderWeek();
+  if (currentTab === 'review') renderReview();
+}
+
+// Subscribe and init
+JodySync.onStatusChange(syncUpdateStatus);
+
+(async () => {
+  syncUpdateStatus();
+  const result = await JodySync.init();
+  if (result && result.applied) reloadAllViews();
+  syncUpdateStatus();
+})();
+
+// Auto-expand textareas as user types
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('textarea').forEach(ta => {
+    ta.addEventListener('input', () => autoResize(ta));
+    ta.addEventListener('focus', () => autoResize(ta));
+  });
+});
+
+// Register service worker for PWA
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
+
