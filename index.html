@@ -1332,11 +1332,11 @@
       <div class="sync-connected-sub" id="sync-connected-info">Syncing to GitHub</div>
       <div id="sync-connected-result" class="sync-result-msg"></div>
       <div class="sync-actions" style="margin-top:24px;">
-        <button class="sync-btn-secondary" onclick="syncPullNow()">↓ Pull Latest</button>
-        <button class="sync-btn-primary" onclick="syncPushNow()">↑ Push Now</button>
+        <button class="sync-btn-primary" onclick="syncPushNow()" style="flex:1">↑ Push Now</button>
+        <button class="sync-btn-primary" onclick="syncPullNow()" style="flex:1;background:var(--surface2);border:1px solid var(--border);color:var(--text);">↓ Pull Latest</button>
       </div>
       <div class="sync-actions" style="margin-top:8px;">
-        <button class="sync-btn-secondary" onclick="closeSyncModal()">Close</button>
+        <button class="sync-btn-secondary" style="flex:1" onclick="closeSyncModal()">Close</button>
       </div>
       <button class="sync-btn-danger" onclick="syncClearConfig()">Disconnect GitHub</button>
     </div>
@@ -2203,11 +2203,20 @@ function renderTasksList() {
       </div>
     ` : '';
 
-    const moveBtn = !t.done ? `
-      <button onclick="event.stopPropagation();openMoveToSheet('${t.id}','${currentTaskArea}')"
-        style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 0 0 8px;line-height:1;"
-        title="Move to another area">⇄</button>
-    ` : '';
+    const actionBtns = !t.done ? `
+      <div style="display:flex;flex-direction:column;gap:6px;align-items:center;padding-left:8px;flex-shrink:0;">
+        <button onclick="event.stopPropagation();openMoveToSheet('${t.id}','${currentTaskArea}')"
+          style="background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;padding:2px;line-height:1;"
+          title="Move to another area">⇄</button>
+        <button onclick="event.stopPropagation();deleteTask('${currentTaskArea}','${t.id}')"
+          style="background:none;border:none;color:var(--text3);font-size:14px;cursor:pointer;padding:2px;line-height:1;"
+          title="Delete task">🗑</button>
+      </div>
+    ` : `
+      <button onclick="event.stopPropagation();deleteTask('${currentTaskArea}','${t.id}')"
+        style="background:none;border:none;color:var(--text3);font-size:14px;cursor:pointer;padding:2px 0 2px 8px;line-height:1;"
+        title="Delete task">🗑</button>
+    `;
 
     return `
       <div class="task-item" onclick="toggleTask('${currentTaskArea}', '${t.id}')">
@@ -2217,10 +2226,17 @@ function renderTasksList() {
           <div class="task-meta">${meta}</div>
           ${legacyMoves}
         </div>
-        ${moveBtn}
+        ${actionBtns}
       </div>
     `;
   }).join('');
+}
+
+function deleteTask(area, id) {
+  if (!confirm('Delete this task?')) return;
+  const tasks = load('tasks_' + area, []).filter(t => String(t.id) !== String(id));
+  save('tasks_' + area, tasks);
+  renderTasksList();
 }
 
 function toggleTask(area, id) {
