@@ -909,16 +909,20 @@
   <div class="sync-modal">
     <div class="sync-modal-handle"></div>
     <div class="sync-modal-title">
-      OneDrive Sync
+      GitHub Sync
       <button class="sync-modal-close" onclick="closeSyncModal()">×</button>
     </div>
 
     <!-- Step 1: Setup -->
     <div id="sync-step-setup">
-      <div class="sync-modal-sub">Sync your data to <strong>OneDrive</strong>. Uses your Microsoft account — no password stored, tokens only.</div>
+      <div class="sync-modal-sub">Sync your data via <strong>GitHub</strong>. Uses a Personal Access Token — no OAuth, works everywhere.</div>
       <div class="sync-field">
-        <label>Azure App Client ID</label>
-        <input type="text" id="sync-client-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+        <label>GitHub Personal Access Token</label>
+        <input type="password" id="sync-pat" placeholder="github_pat_..." autocomplete="off" spellcheck="false">
+      </div>
+      <div class="sync-field">
+        <label>Repository</label>
+        <input type="text" id="sync-repo" placeholder="escheron-repoadmin/jody-os" autocomplete="off" spellcheck="false">
       </div>
       <div class="sync-field">
         <label>Device Label</label>
@@ -927,27 +931,15 @@
       <div id="sync-test-result" class="sync-result-msg"></div>
       <div class="sync-actions">
         <button class="sync-btn-secondary" onclick="closeSyncModal()">Cancel</button>
-        <button class="sync-btn-primary" onclick="syncStartDeviceFlow()">Connect →</button>
+        <button class="sync-btn-primary" onclick="syncConnect()">Connect →</button>
       </div>
-      <button class="sync-btn-danger" id="sync-clear-btn" onclick="syncClearConfig()" style="display:none">Disconnect OneDrive</button>
+      <button class="sync-btn-danger" id="sync-clear-btn" onclick="syncClearConfig()" style="display:none">Disconnect</button>
       <div class="sync-note">
-        One-time Azure setup (5 min): Register a free app at <a href="https://portal.azure.com" target="_blank">portal.azure.com</a> → App registrations → New → Personal Microsoft accounts only → add Mobile/Desktop redirect URI: <code>https://login.microsoftonline.com/common/oauth2/nativeclient</code> → copy the Application (client) ID.
+        Get a token: github.com → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token → Repository access: jody-os only → Contents: Read and write → Generate.
       </div>
     </div>
 
-    <!-- Step 2: Device code -->
-    <div id="sync-step-code" style="display:none">
-      <div class="sync-step-label">1 · Go to</div>
-      <div style="font-size:17px;font-weight:700;margin-bottom:16px;">microsoft.com/devicelogin</div>
-      <div class="sync-step-label">2 · Enter this code</div>
-      <div class="sync-device-code-display" id="sync-device-code">——————</div>
-      <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:16px;">Sign in with your Microsoft account on any device. This screen polls automatically.</div>
-      <div id="sync-code-result" class="sync-result-msg"></div>
-      <div class="sync-actions">
-        <button class="sync-btn-secondary" onclick="syncCancelDeviceFlow()">Cancel</button>
-        <a href="https://microsoft.com/devicelogin" target="_blank" rel="noopener" style="flex:1;padding:13px;background:var(--accent);border-radius:12px;color:#fff;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;text-decoration:none;text-align:center;display:block;">Open Link ↗</a>
-      </div>
-    </div>
+    <!-- Step 2: removed — PAT flow has no device code step -->
 
     <!-- Step 3: Connected -->
     <div id="sync-step-connected" style="display:none">
@@ -1055,52 +1047,39 @@
  */
 
 (function (root, factory) {
-  if (typeof define === 'function' && define.amd) {
-    define([], factory);
-  } else if (typeof module === 'object' && module.exports) {
-    module.exports = factory();
-  } else {
-    root.JodySync = factory();
-  }
+  if (typeof module === 'object' && module.exports) { module.exports = factory(); }
+  else { root.JodySync = factory(); }
 }(typeof globalThis !== 'undefined' ? globalThis : this, function () {
 
-  const DATA_PREFIX    = 'jos_';
-  const CONFIG_PREFIX  = 'jos_sync_';
-  const DATA_VERSION   = 2;
-  const PUSH_DEBOUNCE  = 3000;
-  const META_KEY       = '_meta';
-  const GRAPH_FILE_URL = 'https://graph.microsoft.com/v1.0/me/drive/root:/JodyOS/data.json:/content';
-  const TOKEN_URL      = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
-  const DEVICE_URL     = 'https://login.microsoftonline.com/common/oauth2/v2.0/devicecode';
-  const SCOPE          = 'Files.ReadWrite offline_access';
+  const DATA_PREFIX   = 'jos_';
+  const CONFIG_PREFIX = 'jos_sync_';
+  const DATA_VERSION  = 3;
+  const PUSH_DEBOUNCE = 3000;
+  const META_KEY      = '_meta';
+  const DATA_FILE     = 'data.json';
 
   let _pushTimer  = null;
   let _pushing    = false;
   let _listeners  = [];
-  let _pollCancel = false;
 
-  // ── Config helpers ────────────────────────────────────────────────────────
-  const cfgGet = (k, d = '') => {
-    try { const v = localStorage.getItem(CONFIG_PREFIX + k); return v !== null ? v : d; }
-    catch (e) { return d; }
-  };
-  const cfgSet = (k, v) => { try { localStorage.setItem(CONFIG_PREFIX + k, String(v)); } catch (e) {} };
-  const cfgDel = k       => { try { localStorage.removeItem(CONFIG_PREFIX + k); } catch (e) {} };
+  // ── Config ────────────────────────────────────────────────────────────────
+  const cfgGet = (k, d = '') => { try { const v = localStorage.getItem(CONFIG_PREFIX + k); return v !== null ? v : d; } catch { return d; } };
+  const cfgSet = (k, v)      => { try { localStorage.setItem(CONFIG_PREFIX + k, String(v)); } catch {} };
+  const cfgDel = k           => { try { localStorage.removeItem(CONFIG_PREFIX + k); } catch {} };
 
   function getConfig() {
     return {
-      clientId:     cfgGet('client_id'),
-      accessToken:  cfgGet('access_token'),
-      refreshToken: cfgGet('refresh_token'),
-      tokenExpiry:  cfgGet('token_expiry'),
-      last:         cfgGet('last'),
-      device:       cfgGet('device', _defaultDevice()),
+      pat:    cfgGet('pat'),
+      repo:   cfgGet('repo'),
+      device: cfgGet('device', _defaultDevice()),
+      last:   cfgGet('last'),
+      sha:    cfgGet('sha'),
     };
   }
 
   function isConfigured() {
     const c = getConfig();
-    return !!(c.clientId && c.refreshToken);
+    return !!(c.pat && c.repo);
   }
 
   function _defaultDevice() {
@@ -1110,94 +1089,63 @@
       if (/Android/.test(ua))     return 'Android';
       if (/Mac/.test(ua))         return 'Mac';
       if (/Win/.test(ua))         return 'Windows';
-    } catch (e) {}
+    } catch {}
     return 'Desktop';
   }
 
-  // ── Token management ──────────────────────────────────────────────────────
-  function _isTokenExpired() {
-    const expiry = cfgGet('token_expiry');
-    if (!expiry) return true;
-    return Date.now() > new Date(expiry).getTime() - 60000;
+  // ── GitHub API ────────────────────────────────────────────────────────────
+  function _apiUrl() {
+    const { repo } = getConfig();
+    return `https://api.github.com/repos/${repo}/contents/${DATA_FILE}`;
   }
 
-  async function _refreshAccessToken() {
-    const c = getConfig();
-    if (!c.clientId || !c.refreshToken) throw new Error('No refresh token available');
-    const body = new URLSearchParams({
-      client_id:     c.clientId,
-      grant_type:    'refresh_token',
-      refresh_token: c.refreshToken,
-      scope:         SCOPE,
+  async function _ghGet() {
+    const { pat } = getConfig();
+    const res = await fetch(_apiUrl(), {
+      headers: {
+        'Authorization': `Bearer ${pat}`,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      }
     });
-    const res = await fetch(TOKEN_URL, { method: 'POST', body });
+    if (res.status === 404) return null;
     if (!res.ok) {
       const txt = await res.text();
-      throw Object.assign(new Error('Token refresh failed: ' + res.status), { status: res.status, body: txt });
+      throw new Error(`GitHub GET ${res.status}: ${txt}`);
     }
     const j = await res.json();
-    cfgSet('access_token',  j.access_token);
-    cfgSet('refresh_token', j.refresh_token || c.refreshToken);
-    cfgSet('token_expiry',  new Date(Date.now() + j.expires_in * 1000).toISOString());
-    return j.access_token;
+    cfgSet('sha', j.sha);
+    // Content is base64 encoded
+    const decoded = atob(j.content.replace(/\n/g, ''));
+    return decoded;
   }
 
-  async function _getToken() {
-    if (_isTokenExpired()) return _refreshAccessToken();
-    return cfgGet('access_token');
-  }
-
-  // ── Device code flow ──────────────────────────────────────────────────────
-  async function startDeviceFlow(clientId) {
-    const body = new URLSearchParams({ client_id: clientId, scope: SCOPE });
-    const res  = await fetch(DEVICE_URL, { method: 'POST', body });
+  async function _ghPut(content) {
+    const { pat, device, sha } = getConfig();
+    const encoded = btoa(unescape(encodeURIComponent(content)));
+    const body = {
+      message: `JodyOS sync from ${device} · ${new Date().toISOString()}`,
+      content: encoded,
+      ...(sha ? { sha } : {}),
+    };
+    const res = await fetch(_apiUrl(), {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${pat}`,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
     if (!res.ok) {
       const txt = await res.text();
-      throw new Error('Device code request failed (' + res.status + '): ' + txt);
+      throw new Error(`GitHub PUT ${res.status}: ${txt}`);
     }
-    return res.json();
+    const j = await res.json();
+    cfgSet('sha', j.content.sha);
+    return true;
   }
-
-  async function pollDeviceFlow(clientId, deviceCode, interval, onUpdate) {
-    _pollCancel  = false;
-    const waitMs = Math.max((interval || 5) + 1, 5) * 1000;
-    const wait   = ms => new Promise(r => setTimeout(r, ms));
-
-    while (!_pollCancel) {
-      await wait(waitMs);
-      if (_pollCancel) break;
-
-      try {
-        const body = new URLSearchParams({
-          client_id:   clientId,
-          grant_type:  'urn:ietf:params:oauth:grant-type:device_code',
-          device_code: deviceCode,
-        });
-        const res = await fetch(TOKEN_URL, { method: 'POST', body });
-        const j   = await res.json();
-
-        if (j.access_token) {
-          cfgSet('client_id',     clientId);
-          cfgSet('access_token',  j.access_token);
-          cfgSet('refresh_token', j.refresh_token);
-          cfgSet('token_expiry',  new Date(Date.now() + j.expires_in * 1000).toISOString());
-          _notify();
-          return { ok: true };
-        }
-
-        if (j.error === 'authorization_pending') { if (onUpdate) onUpdate('pending'); continue; }
-        if (j.error === 'slow_down')             { await wait(5000); continue; }
-
-        return { ok: false, reason: j.error_description || j.error || 'unknown' };
-
-      } catch (e) {
-        if (onUpdate) onUpdate('network_error');
-      }
-    }
-    return { ok: false, reason: 'cancelled' };
-  }
-
-  function cancelDeviceFlow() { _pollCancel = true; }
 
   // ── Data snapshot ─────────────────────────────────────────────────────────
   function _snapshot() {
@@ -1209,7 +1157,7 @@
           data[k] = localStorage.getItem(k);
         }
       }
-    } catch (e) {}
+    } catch {}
     return data;
   }
 
@@ -1223,41 +1171,12 @@
     } catch (e) { console.warn('[JodySync] apply failed:', e); }
   }
 
-  // ── Graph API ─────────────────────────────────────────────────────────────
-  async function _graphGet() {
-    const token = await _getToken();
-    const res   = await fetch(GRAPH_FILE_URL, { headers: { 'Authorization': 'Bearer ' + token } });
-    if (res.status === 404) return null;
-    if (!res.ok) throw Object.assign(new Error('Graph GET ' + res.status), { status: res.status });
-    return res.text();
-  }
-
-  async function _graphPut(content) {
-    const token = await _getToken();
-    const res   = await fetch(GRAPH_FILE_URL, {
-      method:  'PUT',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body:    content,
-    });
-    if (!res.ok) {
-      const txt = await res.text();
-      throw Object.assign(new Error('Graph PUT ' + res.status), { status: res.status, body: txt });
-    }
-    return true;
-  }
-
   // ── Status ────────────────────────────────────────────────────────────────
-  function _notify() { _listeners.forEach(fn => { try { fn(getStatus()); } catch (e) {} }); }
+  function _notify() { _listeners.forEach(fn => { try { fn(getStatus()); } catch {} }); }
 
   function getStatus() {
     const c = getConfig();
-    return {
-      configured:  isConfigured(),
-      device:      c.device,
-      lastSync:    c.last        || null,
-      tokenExpiry: c.tokenExpiry || null,
-      pushing:     _pushing,
-    };
+    return { configured: isConfigured(), device: c.device, lastSync: c.last || null, pushing: _pushing };
   }
 
   function onStatusChange(fn) {
@@ -1269,7 +1188,7 @@
   async function pull() {
     if (!isConfigured()) return { ok: false, reason: 'not_configured' };
     try {
-      const raw = await _graphGet();
+      const raw = await _ghGet();
       if (!raw) return { ok: true, empty: true };
 
       const remote     = JSON.parse(raw);
@@ -1300,14 +1219,13 @@
 
     const now = new Date().toISOString();
     try {
-      const snapshot   = _snapshot();
+      const snapshot = _snapshot();
       snapshot[META_KEY] = { updated: now, device: cfgGet('device', _defaultDevice()), version: DATA_VERSION };
-      await _graphPut(JSON.stringify(snapshot, null, 2));
+      await _ghPut(JSON.stringify(snapshot, null, 2));
       cfgSet('last', now);
       _pushing = false;
       _notify();
       return { ok: true };
-
     } catch (e) {
       _pushing = false;
       _notify();
@@ -1324,14 +1242,15 @@
   }
 
   // ── CONFIG ────────────────────────────────────────────────────────────────
-  function configure({ clientId, device } = {}) {
-    if (clientId) cfgSet('client_id', clientId.trim());
-    if (device)   cfgSet('device',    device.trim());
+  function configure({ pat, repo, device } = {}) {
+    if (pat)    cfgSet('pat',    pat.trim());
+    if (repo)   cfgSet('repo',   repo.trim());
+    if (device) cfgSet('device', device.trim());
     _notify();
   }
 
   function clearConfig() {
-    ['client_id','access_token','refresh_token','token_expiry','last','device'].forEach(k => cfgDel(k));
+    ['pat','repo','device','last','sha'].forEach(k => cfgDel(k));
     _notify();
   }
 
@@ -1341,23 +1260,9 @@
     return pull();
   }
 
-  // ── Public API ────────────────────────────────────────────────────────────
-  return {
-    init,
-    pull,
-    push,
-    schedulePush,
-    configure,
-    clearConfig,
-    getStatus,
-    onStatusChange,
-    startDeviceFlow,
-    pollDeviceFlow,
-    cancelDeviceFlow,
-    _snapshot,
-  };
-
+  return { init, pull, push, schedulePush, configure, clearConfig, getStatus, onStatusChange, _snapshot };
 }));
+
 
 </script>
 
@@ -1879,13 +1784,13 @@ function openSyncModal() {
     }
   } else {
     document.getElementById('sync-step-setup').style.display = 'block';
-    const cidEl = document.getElementById('sync-client-id');
-    const storedCid = localStorage.getItem('jos_sync_client_id');
-    if (cidEl && storedCid) cidEl.value = storedCid;
+    const repoEl = document.getElementById('sync-repo');
+    const storedRepo = localStorage.getItem('jos_sync_repo');
+    if (repoEl) repoEl.value = storedRepo || 'escheron-repoadmin/jody-os';
     const devEl = document.getElementById('sync-device');
     if (devEl) devEl.value = s.device || 'iOS';
     const clearBtn = document.getElementById('sync-clear-btn');
-    if (clearBtn) clearBtn.style.display = storedCid ? 'block' : 'none';
+    if (clearBtn) clearBtn.style.display = storedRepo ? 'block' : 'none';
   }
   document.getElementById('sync-modal-overlay').classList.add('open');
 }
@@ -1893,6 +1798,39 @@ function openSyncModal() {
 function closeSyncModal() {
   if (_syncDeviceFlowActive) syncCancelDeviceFlow();
   document.getElementById('sync-modal-overlay').classList.remove('open');
+}
+
+async function syncConnect() {
+  const pat    = (document.getElementById('sync-pat').value || '').trim();
+  const repo   = (document.getElementById('sync-repo').value || '').trim();
+  const device = (document.getElementById('sync-device').value || '').trim() || 'iOS';
+
+  if (!pat)  { _showSyncMsg('sync-test-result', false, 'Please enter your GitHub Personal Access Token.'); return; }
+  if (!repo) { _showSyncMsg('sync-test-result', false, 'Please enter your repository (e.g. username/jody-os).'); return; }
+
+  JodySync.configure({ pat, repo, device });
+
+  // Test connection with a pull
+  _showSyncMsg('sync-test-result', true, 'Connecting…');
+  try {
+    const result = await JodySync.pull();
+    if (result.ok) {
+      if (result.applied) reloadAllViews();
+      // First push to establish data.json if empty
+      if (result.empty) await JodySync.push();
+      syncUpdateStatus();
+      document.getElementById('sync-step-setup').style.display = 'none';
+      document.getElementById('sync-step-connected').style.display = 'block';
+      const info = document.getElementById('sync-connected-info');
+      if (info) info.textContent = `Connected to ${repo}`;
+    } else {
+      JodySync.clearConfig();
+      _showSyncMsg('sync-test-result', false, 'Connection failed: ' + (result.reason || 'check your token and repo'));
+    }
+  } catch(e) {
+    JodySync.clearConfig();
+    _showSyncMsg('sync-test-result', false, 'Error: ' + e.message);
+  }
 }
 
 async function syncStartDeviceFlow() {
