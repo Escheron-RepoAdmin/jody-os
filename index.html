@@ -1988,7 +1988,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Register service worker for PWA
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/jody-os/sw.js').catch(() => {});
+  // Unregister any old service workers first, then register fresh
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    Promise.all(regs.map(r => r.unregister())).then(() => {
+      navigator.serviceWorker.register('/jody-os/sw.js');
+    });
+  });
 }
 </script>
 </body>
