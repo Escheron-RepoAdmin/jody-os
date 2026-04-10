@@ -1,4 +1,4 @@
-const CACHE = 'jody-os-v3';
+const CACHE = 'jody-os-v4';
 const ASSETS = [
   '/jody-os/',
   '/jody-os/index.html',
@@ -8,9 +8,7 @@ const ASSETS = [
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => {
-      return Promise.allSettled(ASSETS.map(a => c.add(a)));
-    })
+    caches.open(CACHE).then(c => Promise.allSettled(ASSETS.map(a => c.add(a))))
   );
   self.skipWaiting();
 });
@@ -25,7 +23,12 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Network first — always try live, fall back to cache
+  const url = new URL(e.request.url);
+
+  // Only handle same-origin requests — let all external requests pass through untouched
+  if (url.origin !== self.location.origin) return;
+
+  // Network first for same-origin
   e.respondWith(
     fetch(e.request)
       .then(res => {
