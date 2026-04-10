@@ -944,14 +944,14 @@
     <!-- Step 3: Connected -->
     <div id="sync-step-connected" style="display:none">
       <div class="sync-connected-check">✓</div>
-      <div class="sync-connected-title">Connected to OneDrive</div>
-      <div class="sync-connected-sub" id="sync-connected-info">Syncing to JodyOS/data.json</div>
+      <div class="sync-connected-title">Connected to GitHub</div>
+      <div class="sync-connected-sub" id="sync-connected-info">Syncing to GitHub</div>
       <div id="sync-connected-result" class="sync-result-msg"></div>
       <div class="sync-actions" style="margin-top:24px;">
         <button class="sync-btn-secondary" onclick="closeSyncModal()">Close</button>
         <button class="sync-btn-primary" onclick="syncPushNow()">Sync Now →</button>
       </div>
-      <button class="sync-btn-danger" onclick="syncClearConfig()">Disconnect</button>
+      <button class="sync-btn-danger" onclick="syncClearConfig()">Disconnect GitHub</button>
     </div>
   </div>
 </div>
@@ -1780,7 +1780,7 @@ function openSyncModal() {
     const info = document.getElementById('sync-connected-info');
     if (info) {
       const last = s.lastSync ? new Date(s.lastSync).toLocaleString() : 'never';
-      info.textContent = 'Syncing to JodyOS/data.json · Last: ' + last;
+      info.textContent = (localStorage.getItem('jos_sync_repo') || 'GitHub') + ' · Last: ' + last;
     }
   } else {
     document.getElementById('sync-step-setup').style.display = 'block';
