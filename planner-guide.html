@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How to Use Your Operating System · v6</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Cabinet+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f0e0c; --surface: #1c1a17; --surface2: #252219;
+  --border: rgba(255,245,220,0.12); --text: #f5f0e8;
+  --muted: rgba(245,240,232,0.62); --dim: rgba(245,240,232,0.28);
+  --creation: #4ade80; --creation-bg: rgba(74,222,128,0.08); --creation-border: rgba(74,222,128,0.2);
+  --external: #60a5fa; --external-bg: rgba(96,165,250,0.08); --external-border: rgba(96,165,250,0.2);
+  --admin: #fbbf24; --admin-bg: rgba(251,191,36,0.08); --admin-border: rgba(251,191,36,0.2);
+  --legacy: #f87171; --legacy-bg: rgba(248,113,113,0.08); --legacy-border: rgba(248,113,113,0.2);
+  --self: #c084fc; --self-bg: rgba(192,132,252,0.08); --self-border: rgba(192,132,252,0.2);
+  --home: #38bdf8; --home-bg: rgba(56,189,248,0.08); --home-border: rgba(56,189,248,0.2);
+  --money: #34d399; --money-bg: rgba(52,211,153,0.08); --money-border: rgba(52,211,153,0.2);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Cabinet Grotesk', sans-serif; line-height: 1.6; }
+.top-nav { position: sticky; top: 0; z-index: 100; background: rgba(15,14,12,0.96); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); padding: 0 28px; display: flex; align-items: center; overflow-x: auto; gap: 0; }
+.nav-logo { font-family: 'Instrument Serif', serif; font-size: 15px; color: var(--text); padding: 15px 20px 15px 0; border-right: 1px solid var(--border); margin-right: 12px; white-space: nowrap; flex-shrink: 0; }
+.nav-link { padding: 15px 12px; font-size: 13px; font-weight: 500; color: rgba(245,240,232,0.6); cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.15s; flex-shrink: 0; }
+.nav-link:hover { color: var(--text); }
+.nav-link.active { color: var(--text); border-bottom-color: var(--text); }
+.section { display: none; max-width: 740px; margin: 0 auto; padding: 48px 28px 80px; animation: fi 0.2s ease; }
+.section.active { display: block; }
+@keyframes fi { from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)} }
+.section-eyebrow { font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.section-title { font-family: 'Instrument Serif', serif; font-size: clamp(28px,5vw,42px); font-weight: 400; line-height: 1.1; margin-bottom: 18px; }
+.section-title em { font-style: italic; color: var(--muted); }
+.section-intro { font-size: 15px; color: var(--muted); line-height: 1.8; max-width: 560px; margin-bottom: 36px; border-left: 2px solid rgba(255,245,220,0.22); padding-left: 18px; }
+.block { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px 26px; margin-bottom: 14px; }
+.block-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+.block-body { font-size: 13px; color: var(--muted); line-height: 1.8; }
+.block-body p+p { margin-top: 9px; }
+.block-body strong { color: var(--text); font-weight: 600; }
+.block-body ul { padding-left: 18px; margin-top: 6px; }
+.block-body li { margin-bottom: 4px; }
+.container-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.container-card { border-radius: 12px; padding: 18px 20px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+.container-card::after { content: 'tap to expand ↓'; position: absolute; bottom: 10px; right: 12px; font-size: 9px; opacity: 0.3; letter-spacing: 0.5px; }
+.container-card.open::after { content: 'tap to close ↑'; }
+.c-tag { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; margin-bottom: 4px; opacity: 0.6; }
+.c-name { font-family: 'Instrument Serif', serif; font-size: 20px; margin-bottom: 4px; line-height: 1.1; }
+.c-tagline { font-size: 11px; opacity: 0.5; line-height: 1.4; }
+.c-detail { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.07); font-size: 12px; line-height: 1.7; opacity: 0.75; }
+.container-card.open .c-detail { display: block; }
+.c-examples { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
+.c-chip { background: rgba(255,255,255,0.07); border-radius: 3px; padding: 2px 7px; font-size: 10px; opacity: 0.8; }
+.rule-card { border-left: 3px solid; padding: 12px 16px; background: var(--surface); border-radius: 0 8px 8px 0; margin-bottom: 8px; font-size: 13px; line-height: 1.7; }
+.rule-card strong { color: var(--text); }
+.ritual-step { display: grid; grid-template-columns: 65px 1fr; position: relative; }
+.ritual-step:not(:last-child)::after { content:''; position:absolute; left:32px; top:34px; bottom:0; width:1px; background:var(--border); }
+.r-time { font-size: 10px; color: var(--muted); padding-top: 10px; font-weight: 700; }
+.r-body { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; margin-bottom: 7px; margin-left: 3px; }
+.r-title { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+.r-desc { font-size: 11px; color: rgba(245,240,232,0.65); line-height: 1.5; }
+.callout { border-radius: 10px; padding: 14px 18px; margin-bottom: 14px; font-size: 13px; line-height: 1.7; display: flex; gap: 10px; align-items: flex-start; }
+.callout-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.callout.warning { background: rgba(248,113,113,0.07); border: 1px solid rgba(248,113,113,0.2); color: rgba(248,113,113,0.85); }
+.callout.info { background: rgba(96,165,250,0.07); border: 1px solid rgba(96,165,250,0.2); color: rgba(96,165,250,0.85); }
+.callout.tip { background: rgba(74,222,128,0.07); border: 1px solid rgba(74,222,128,0.2); color: rgba(74,222,128,0.85); }
+.callout.storage { background: rgba(74,222,128,0.06); border: 1px solid rgba(74,222,128,0.18); color: rgba(74,222,128,0.8); margin-bottom: 24px; }
+.sorter-tool { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px 26px; margin-bottom: 14px; }
+.sorter-tool h3 { font-family: 'Instrument Serif', serif; font-size: 20px; margin-bottom: 4px; }
+.sorter-sub { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+.sorter-input-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.sorter-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; color: var(--text); font-family: 'Cabinet Grotesk', sans-serif; font-size: 13px; }
+.sorter-input:focus { outline: none; border-color: rgba(255,245,220,0.2); }
+.sorter-btn { background: var(--text); color: var(--bg); border: none; border-radius: 8px; padding: 11px 18px; font-family: 'Cabinet Grotesk', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: opacity 0.15s; }
+.sorter-btn:hover { opacity: 0.85; }
+.sort-questions { display: none; }
+.sort-detail { display: none; margin-top: 6px; }
+.selected-opt { background: rgba(255,255,255,0.15) !important; box-shadow: inset 0 0 0 1.5px rgba(255,255,255,0.35); }
+.sort-question { font-size: 14px; font-weight: 600; margin-bottom: 14px; line-height: 1.4; }
+.sort-options { display: flex; flex-direction: column; gap: 7px; }
+.sort-opt { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; font-size: 12px; cursor: pointer; transition: all 0.15s; text-align: left; color: var(--text); font-family: 'Cabinet Grotesk', sans-serif; }
+.sort-opt:hover { border-color: rgba(255,245,220,0.3); background: var(--surface); }
+.sort-result { display: none; border-radius: 10px; padding: 18px 20px; margin-top: 8px; }
+.sort-result-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.7; margin-bottom: 3px; }
+.sort-result-container { font-family: 'Instrument Serif', serif; font-size: 24px; margin-bottom: 6px; }
+.sort-result-why { font-size: 12px; opacity: 0.8; line-height: 1.6; }
+.sort-reset { margin-top: 12px; background: transparent; border: 1px solid rgba(255,245,220,0.2); border-radius: 6px; padding: 7px 12px; color: rgba(245,240,232,0.65); font-family: 'Cabinet Grotesk', sans-serif; font-size: 11px; cursor: pointer; }
+.sort-history { margin-top: 16px; }
+.sort-history h4 { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.history-list { list-style: none; }
+.history-item { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.history-item:last-child { border-bottom: none; }
+.history-badge { padding: 2px 8px; border-radius: 3px; font-size: 10px; font-weight: 700; flex-shrink: 0; }
+.history-task { color: rgba(245,240,232,0.75); flex: 1; }
+.history-clear { background: transparent; border: none; color: var(--dim); font-size: 11px; cursor: pointer; padding: 2px 6px; }
+.history-clear:hover { color: var(--legacy); }
+.ref-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 14px; }
+.ref-table th { text-align: left; padding: 9px 12px; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: rgba(245,240,232,0.55); border-bottom: 1px solid var(--border); font-weight: 600; }
+.ref-table td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: top; line-height: 1.6; color: rgba(245,240,232,0.72); }
+.ref-table td:first-child { color: var(--text); font-weight: 600; white-space: nowrap; }
+.ref-table tr:last-child td { border-bottom: none; }
+@media (max-width: 580px) {
+  .container-grid { grid-template-columns: 1fr; }
+  .top-nav { padding: 0 14px; }
+  .section { padding: 32px 16px 60px; }
+  .sorter-input-row { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <div class="nav-logo">Your OS · Guide <span style="font-size:10px;opacity:0.4;margin-left:6px">v6</span></div>
+  <div class="nav-link active" onclick="show('overview',this)">Overview</div>
+  <div class="nav-link" onclick="show('containers',this)">Containers</div>
+  <div class="nav-link" onclick="show('sorter',this)">Sort a Task</div>
+  <div class="nav-link" onclick="show('daily',this)">Daily Ritual</div>
+  <div class="nav-link" onclick="show('tasks',this)">Task Features</div>
+  <div class="nav-link" onclick="show('schedule',this)">Schedule</div>
+  <div class="nav-link" onclick="show('rules',this)">Rules</div>
+  <div class="nav-link" onclick="show('logging',this)">Logging</div>
+</nav>
+
+<!-- OVERVIEW -->
+<div class="section active" id="sec-overview">
+  <div class="section-eyebrow">Start Here</div>
+  <div class="section-title">How this system <em>works</em></div>
+  <div class="section-intro">Three principles hold everything together. If you forget everything else, remember these.</div>
+  <div class="callout storage"><div class="callout-icon">💾</div><div><strong>localStorage is active.</strong> Everything saves automatically in this browser. Export weekly from the planner sidebar as a backup habit.</div></div>
+  <div class="block">
+    <div class="block-title"><span style="font-size:18px">1</span> One meaningful action per day is enough</div>
+    <div class="block-body"><p>Not ten. Not a list. <strong>One thing</strong> that moves something forward. Everything else is bonus. Your brain runs on <strong>completion, not effort</strong>. A finished small thing gives more forward momentum than a half-finished big one.</p></div>
+  </div>
+  <div class="block">
+    <div class="block-title"><span style="font-size:18px">2</span> Every task belongs to exactly one container</div>
+    <div class="block-body"><p>There are 7 containers: <strong>Creation, External, Admin, Legacy, Self, Home, Money.</strong> When a task arrives, your only job is: <em>which container?</em> You don't have to do it now — just file it correctly. The anxiety of a disorganized list comes from tasks that live nowhere.</p></div>
+  </div>
+  <div class="block">
+    <div class="block-title"><span style="font-size:18px">3</span> Time blocks outrank feelings</div>
+    <div class="block-body"><p>You won't always feel like doing Creation at 7:30am. <strong>That doesn't matter.</strong> The block tells you what mode you're in. Start the focus timer, open that container, pick the top item. Structure replaces the decision.</p></div>
+  </div>
+  <div class="callout tip"><div class="callout-icon">💡</div><div><strong>The planner's job:</strong> tell you which container you're in right now. Look at the timeline → find the current block → open that container → pick the top item → start the focus timer → go.</div></div>
+</div>
+
+<!-- CONTAINERS -->
+<div class="section" id="sec-containers">
+  <div class="section-eyebrow">The Containers</div>
+  <div class="section-title">Where every task <em>lives</em></div>
+  <div class="section-intro">Tap any card to see what goes in it, what doesn't, and how to work it.</div>
+  <div class="container-grid">
+    <div class="container-card" style="background:var(--creation-bg);border:1px solid var(--creation-border);color:var(--creation)" onclick="this.classList.toggle('open')">
+      <div class="c-tag">Container 1</div><div class="c-name">Creation</div><div class="c-tagline">Building Escheron forward</div>
+      <div class="c-detail"><p><strong>What goes here:</strong> Engineering standards, software design, business strategy, proposals, machine concepts, business plan.</p><p style="margin-top:7px"><strong>What doesn't:</strong> Replying to emails (External). Paying bills (Admin). Anything reactive.</p><p style="margin-top:7px"><strong>How to work it:</strong> Peak-med block 7:30–11:30am. Pick one item before you sit down — ideally the night before. Do not open email first.</p><div class="c-examples"><span class="c-chip">TSS-PROD-MCH-SW-001</span><span class="c-chip">EE standards</span><span class="c-chip">Investor pitch</span><span class="c-chip">Machine design</span></div></div>
+    </div>
+    <div class="container-card" style="background:var(--external-bg);border:1px solid var(--external-border);color:var(--external)" onclick="this.classList.toggle('open')">
+      <div class="c-tag">Container 2</div><div class="c-name">External</div><div class="c-tagline">Tasks that exist because people exist</div>
+      <div class="c-detail"><p><strong>What goes here:</strong> Meetings, replies, coordination, follow-ups. If it requires another person, it's External.</p><p style="margin-top:7px"><strong>How to work it:</strong> Midday block 1–3pm. Process in batches. Reply, delegate, or convert to a Creation task.</p><div class="c-examples"><span class="c-chip">Email replies</span><span class="c-chip">Customer calls</span><span class="c-chip">Supplier follow-ups</span></div></div>
+    </div>
+    <div class="container-card" style="background:var(--admin-bg);border:1px solid var(--admin-border);color:var(--admin)" onclick="this.classList.toggle('open')">
+      <div class="c-tag">Container 3</div><div class="c-name">Admin</div><div class="c-tagline">Recurring, mechanical, necessary</div>
+      <div class="c-detail"><p><strong>What goes here:</strong> Bills, compliance, scheduling, ordering. Mark tasks as <strong>Recurring</strong> with a frequency (Daily/Weekly/Monthly etc.) — checking them off archives the completion and auto-advances to the next due date.</p><p style="margin-top:7px"><strong>How to work it:</strong> 25-min blocks at 11:30am and 3:30pm. Execute, don't decide.</p><div class="c-examples"><span class="c-chip">Pay bills</span><span class="c-chip">File receipts</span><span class="c-chip">Order parts</span><span class="c-chip">BP check</span></div></div>
+    </div>
+    <div class="container-card" style="background:var(--legacy-bg);border:1px solid var(--legacy-border);color:var(--legacy)" onclick="this.classList.toggle('open')">
+      <div class="c-tag">Container 4</div><div class="c-name">Legacy</div><div class="c-tagline">Old, sticky, emotionally loaded</div>
+      <div class="c-detail"><p><strong>What goes here:</strong> Tasks sitting undone for weeks. Decisions you've been avoiding.</p><p style="margin-top:7px"><strong>How to work it:</strong> 25 min only. Each item gets one move: <strong>✓ Close</strong> (done/irrelevant), <strong>→ Decide</strong> (make the call now), <strong>↗ Delegate</strong> (assign it), <strong>⊞ Break Down</strong> (split it), <strong>⏱ Defer</strong> (set a future date — hides until then).</p><div class="c-examples"><span class="c-chip">Stalled projects</span><span class="c-chip">Unmade decisions</span><span class="c-chip">Old promises</span></div></div>
+    </div>
+    <div class="container-card" style="background:var(--self-bg);border:1px solid var(--self-border);color:var(--self)" onclick="this.classList.toggle('open')">
+      <div class="c-tag">Container 5</div><div class="c-name">Self</div><div class="c-tagline">Health, ADHD, your own maintenance</div>
+      <div class="c-detail"><p><strong>What goes here:</strong> Frida appointments, BP checks, ADHD tasks, exercise, sleep, personal development. Tasks have <strong>sub-areas</strong> (ADHD & Frida, Health & Medical, Personal Development, Exercise & Sleep), <strong>urgency</strong> (🔴🟡🟢), a <strong>deadline</strong>, and can be <strong>Recurring</strong>.</p><p style="margin-top:7px"><strong>When:</strong> Morning transition 7–7:30am, or before a deadline.</p><div class="c-examples"><span class="c-chip">Frida prep forms</span><span class="c-chip">BP reading</span><span class="c-chip">Claude training</span><span class="c-chip">Exercise</span></div></div>
+    </div>
+    <div class="container-card" style="background:var(--home-bg);border:1px solid var(--home-border);color:var(--home)" onclick="this.classList.toggle('open')">
+      <div class="c-tag">Container 6</div><div class="c-name">Home</div><div class="c-tagline">Family, house, life logistics</div>
+      <div class="c-detail"><p><strong>What goes here:</strong> GTA search, kids/school, house maintenance, domestic tasks. Tasks have <strong>custom sub-areas</strong> (you define them), can be <strong>Delegated</strong> (tap ✎, set "Delegate to" — shows as ↗ Name badge), and can be <strong>Recurring</strong>.</p><p style="margin-top:7px"><strong>When:</strong> 3:30–4pm Admin + Home block.</p><p style="margin-top:7px"><strong>Rule:</strong> Do not act on Home tasks during Creation time. File it, return to work.</p><div class="c-examples"><span class="c-chip">GTA search</span><span class="c-chip">Kids school</span><span class="c-chip">House maintenance</span></div></div>
+    </div>
+    <div class="container-card" style="background:var(--money-bg);border:1px solid var(--money-border);color:var(--money)" onclick="this.classList.toggle('open')">
+      <div class="c-tag">Container 7</div><div class="c-name">Money</div><div class="c-tagline">Finances, taxes, anything with a dollar sign</div>
+      <div class="c-detail"><p><strong>What goes here:</strong> Tax filing, invoicing, banking, financial planning. Tasks show a due date and can be <strong>Recurring</strong> with a frequency — checking off archives the completion and creates a fresh copy at the next due date automatically.</p><p style="margin-top:7px"><strong>Why separate:</strong> Money tasks get avoided hardest. Their own container makes them harder to ignore.</p><div class="c-examples"><span class="c-chip">HST installment</span><span class="c-chip">Invoices</span><span class="c-chip">Business banking</span><span class="c-chip">Taxes</span></div></div>
+    </div>
+  </div>
+  <div class="callout warning"><div class="callout-icon">⚠️</div><div><strong>Working-from-home trap:</strong> the dishwasher, laundry, and kids are physically present during your Creation block. When a home task surfaces, write it in Home and return to work. 10 seconds to file. 40 minutes lost if you act on it.</div></div>
+</div>
+
+<!-- SORTER -->
+<div class="section" id="sec-sorter">
+  <div class="section-eyebrow">Interactive Tool</div>
+  <div class="section-title">Sort any task <em>instantly</em></div>
+  <div class="section-intro">Type a task and answer a few questions. Saves directly to the planner. Sort history stored locally.</div>
+  <div class="sorter-tool">
+    <h3>Task Sorter</h3>
+    <div class="sorter-sub">Type the task as it came to you — messy is fine.</div>
+    <div class="sorter-input-row">
+      <input class="sorter-input" id="task-input" type="text" placeholder="e.g. 'reply to Marcus about drive spec' or 'fix garage door'" onkeydown="if(event.key==='Enter')startSort()">
+      <button class="sorter-btn" onclick="startSort()">Sort →</button>
+    </div>
+    <div class="sort-questions" id="sort-questions"><div class="sort-question" id="sort-q"></div><div class="sort-options" id="sort-opts"></div></div>
+    <div class="sort-detail" id="sort-detail"></div>
+    <div class="sort-result" id="sort-result">
+      <div class="sort-result-label">This task belongs in</div>
+      <div class="sort-result-container" id="sort-container-name">—</div>
+      <div class="sort-result-why" id="sort-why">—</div>
+      <button class="sort-reset" onclick="resetSort()">↩ Sort another</button>
+    </div>
+    <div class="sort-history" id="sort-history" style="display:none">
+      <h4>Recent sorts <button class="history-clear" onclick="clearHistory()" style="float:right">clear all</button></h4>
+      <ul class="history-list" id="history-list"></ul>
+    </div>
+  </div>
+  <div class="block">
+    <div class="block-title">The quick shortcut</div>
+    <div class="block-body"><p><strong>Person needed?</strong> → External. <strong>Building something new?</strong> → Creation. <strong>Maintaining/repeating?</strong> → Admin. <strong>Been sitting weeks?</strong> → Legacy. <strong>Health/self-care?</strong> → Self. <strong>Home/family?</strong> → Home. <strong>Dollar sign?</strong> → Money.</p></div>
+  </div>
+</div>
+
+<!-- DAILY RITUAL -->
+<div class="section" id="sec-daily">
+  <div class="section-eyebrow">The Daily Ritual</div>
+  <div class="section-title">What to do at <em>each moment</em></div>
+  <div class="section-intro">The planner shows the block. Here's what to do when you arrive at each one.</div>
+  <div class="ritual-step"><div class="r-time">6:00</div><div class="r-body"><div class="r-title">Wake · Family Morning</div><div class="r-desc">Don't check work on your phone. Family time. Take Vyvanse at 6:30 with protein.</div></div></div>
+  <div class="ritual-step"><div class="r-time">7:00</div><div class="r-body" style="border-color:var(--self-border)"><div class="r-title" style="color:var(--self)">Transition + Self Check</div><div class="r-desc">Meds activating. Open the planner. Check Self container — Frida tasks, BP log, med streak. Write today's One Action. Move your body 5–10 min. Sit down.</div></div></div>
+  <div class="ritual-step"><div class="r-time">7:30</div><div class="r-body" style="border-color:var(--creation-border)"><div class="r-title" style="color:var(--creation)">Creation Block · 4 hours</div><div class="r-desc">Open Creation container. Start the focus timer (25m suggested). <strong>Do not open email first.</strong> The first task sets the tone for the day.</div></div></div>
+  <div class="ritual-step"><div class="r-time">11:30</div><div class="r-body" style="border-color:var(--admin-border)"><div class="r-title" style="color:var(--admin)">Admin Container · 25 min</div><div class="r-desc">Set timer. Execute the recurring checklist. Stop when timer ends. Monday has an extra Admin kickoff at 11am.</div></div></div>
+  <div class="ritual-step"><div class="r-time">12:00</div><div class="r-body"><div class="r-title">Lunch · Step Away</div><div class="r-desc">Eat protein. Leave the desk. Real break between deep work and afternoon.</div></div></div>
+  <div class="ritual-step"><div class="r-time">13:00</div><div class="r-body" style="border-color:var(--external-border)"><div class="r-title" style="color:var(--external)">External Container · 2 hours</div><div class="r-desc">Open email. Return calls. Process to zero — reply, delegate, file, or convert to a Creation task.</div></div></div>
+  <div class="ritual-step"><div class="r-time">15:00</div><div class="r-body" style="border-color:var(--legacy-border)"><div class="r-title" style="color:var(--legacy)">Legacy Container · 25 min</div><div class="r-desc">Pick one item. Make one move: Close, Decide, Delegate, Break Down, or Defer. One item is enough.</div></div></div>
+  <div class="ritual-step"><div class="r-time">15:30</div><div class="r-body" style="border-color:var(--home-border)"><div class="r-title" style="color:var(--home)">Admin + Home · 25 min</div><div class="r-desc">Admin second pass if needed, then Home container — house tasks, GTA search, kids logistics. Same energy as Admin: low-decision execution mode.</div></div></div>
+  <div class="ritual-step"><div class="r-time">16:00</div><div class="r-body" style="border-color:var(--creation-border)"><div class="r-title" style="color:var(--creation)">Light Creation / Review · 90 min</div><div class="r-desc">Lower-intensity work. Meds tapering. Good for review, documentation, planning.</div></div></div>
+  <div class="ritual-step"><div class="r-time">17:30</div><div class="r-body"><div class="r-title">Shutdown Ritual · 10 min</div><div class="r-desc">1. Write one completion.<br>2. Set tomorrow's One Action — now, not in the morning.<br>3. Close work tabs.<br>4. Say out loud: <em>"Shutdown complete."</em><br><br>Without a hard stop, ADHD brains stay in half-work mode all evening.</div></div></div>
+  <div class="ritual-step"><div class="r-time">18:00</div><div class="r-body"><div class="r-title">Family Time · Protected</div><div class="r-desc">No laptop, no "just checking one thing."</div></div></div>
+  <div class="ritual-step"><div class="r-time">21:00</div><div class="r-body"><div class="r-title">Wind Down</div><div class="r-desc">Dim screens. Write racing thoughts to park them. Target 9:30–10pm sleep.</div></div></div>
+  <div class="callout info" style="margin-top:20px"><div class="callout-icon">📅</div><div><strong>Day variations:</strong> Monday has an extra Admin kickoff at 11am. Wednesday afternoon is Business Dev. Friday has a 20-min Weekly Review at 11:30am. Weekends have optional Creation windows and a Legacy slot. Override any day with <strong>✏ Edit Schedule</strong> in the planner.</div></div>
+</div>
+
+<!-- TASK FEATURES -->
+<div class="section" id="sec-tasks">
+  <div class="section-eyebrow">Task Management</div>
+  <div class="section-title">What you can do <em>with tasks</em></div>
+  <div class="section-intro">Everything available on any task in the planner.</div>
+  <div class="block">
+    <div class="block-title">✎ Edit a task</div>
+    <div class="block-body"><p>Hover any task to reveal the <strong>✎</strong> icon. Click to open the edit popover — change the text and all extras for that container type (recurring settings, urgency, sub-area, due date, move, delegate, etc.).</p></div>
+  </div>
+  <div class="block">
+    <div class="block-title">↗ Move to another container</div>
+    <div class="block-body"><p>The edit popover has a <strong>Move to container</strong> section at the bottom. Select a destination and Save — the task moves to the top of that container. Container-specific extras are stripped on move, except recurring settings which carry between Admin ↔ Money.</p></div>
+  </div>
+  <div class="block">
+    <div class="block-title">⠿ Drag to reorder</div>
+    <div class="block-body"><p>Every task has a <strong>⠿ drag handle</strong> on the left (visible on hover). Drag to reprioritize within the list. Order saves immediately.</p></div>
+  </div>
+  <div class="block">
+    <div class="block-title">↻ Recurring tasks</div>
+    <div class="block-body">
+      <p>Admin, Money, Self, and Home tasks can be marked <strong>Recurring</strong> via the ✎ edit popover. Set the frequency: Daily, Weekly, Biweekly, Monthly, Quarterly, or Annually.</p>
+      <p>When you check off a recurring task, it <strong>archives the completion</strong> and creates a fresh copy at the next due date. The completion history is visible in the edit popover. The recurring badge shows the frequency inline (e.g. <em>↻ Monthly</em>). Overdue dates flag red.</p>
+    </div>
+  </div>
+  <div class="block">
+    <div class="block-title">Legacy moves</div>
+    <div class="block-body">
+      <p>Legacy items have five move buttons inline — no need to open edit:</p>
+      <ul>
+        <li><strong>✓ Close</strong> — done or no longer matters</li>
+        <li><strong>→ Decide</strong> — commit to deciding this session</li>
+        <li><strong>↗ Delegate</strong> — assign to someone else</li>
+        <li><strong>⊞ Break Down</strong> — split into smaller tasks elsewhere</li>
+        <li><strong>⏱ Defer</strong> — set a future date; item hides until then</li>
+      </ul>
+    </div>
+  </div>
+  <div class="block">
+    <div class="block-title">Home delegation</div>
+    <div class="block-body"><p>Home tasks have a <strong>Delegate to</strong> field in the ✎ edit popover. The name shows as a blue <strong>↗ Name</strong> badge under the task. Delegated tasks stay visible until checked off so you can follow up.</p></div>
+  </div>
+</div>
+
+<!-- SCHEDULE EDITING -->
+<div class="section" id="sec-schedule">
+  <div class="section-eyebrow">Schedule</div>
+  <div class="section-title">Editing your <em>daily plan</em></div>
+  <div class="section-intro">Every day can be customized without touching the base templates. Overrides are stored per-date.</div>
+  <div class="block">
+    <div class="block-title">✏ Edit Schedule toolbar</div>
+    <div class="block-body">
+      <p>Click <strong>✏ Edit Schedule</strong> above the timeline. The toolbar has four actions:</p>
+      <ul>
+        <li><strong>＋ Add Block</strong> — pick type, title, sub-label, start/end time (15-min snapping)</li>
+        <li><strong>⚡ Preset Day</strong> — replace the whole day: Deep Work, Travel, Admin, Off, Meeting Day, Reset Day</li>
+        <li><strong>⚙ Edit Templates</strong> — permanently edit the Mon–Sun base templates</li>
+        <li><strong>↺ Reset to default</strong> — clears the day's custom override (only shown when overridden)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="block">
+    <div class="block-title">Drag and resize blocks</div>
+    <div class="block-body">
+      <p>In edit mode:</p>
+      <ul>
+        <li><strong>Click</strong> (without dragging) → opens block editor to change type/title/times</li>
+        <li><strong>Drag</strong> a block → moves it to a new time</li>
+        <li><strong>Bottom grip</strong> → drag to resize end time</li>
+        <li><strong>Top grip</strong> → drag to resize start time</li>
+        <li><strong>× button</strong> (top-right of block) → deletes the block</li>
+      </ul>
+      <p style="margin-top:8px">Changes save on release. Click <strong>Done</strong> to exit edit mode.</p>
+    </div>
+  </div>
+  <div class="block">
+    <div class="block-title">Per-day vs. template overrides</div>
+    <div class="block-body"><p><strong>Per-day overrides</strong> apply only to that specific date — a <em>"Custom day"</em> badge appears when active. <strong>Template editing</strong> permanently changes the Mon–Sun defaults. Days already overridden per-date are unaffected until reset. The timeline auto-expands if any block is outside the default 6am–10pm window.</p></div>
+  </div>
+  <div class="callout tip"><div class="callout-icon">⚡</div><div><strong>Travel days:</strong> Use ⚡ Preset → Travel for a quick full-day swap. Gives you transit work blocks in the morning and arrival time in the afternoon. Adjust from there with drag.</div></div>
+</div>
+
+<!-- RULES -->
+<div class="section" id="sec-rules">
+  <div class="section-eyebrow">Decision Rules</div>
+  <div class="section-title">When you're <em>stuck</em></div>
+  <div class="section-intro">The situations that will actually come up.</div>
+  <div class="rule-card" style="border-color:var(--creation)"><strong style="color:var(--creation)">Something interesting surfaces during Creation time.</strong><br>Write it in the relevant container. Return to the current task.</div>
+  <div class="rule-card" style="border-color:var(--external)"><strong style="color:var(--external)">An email arrives that feels urgent.</strong><br>Unless someone is in danger, it waits until your External block. "Urgent" emails are almost always someone else's priority.</div>
+  <div class="rule-card" style="border-color:var(--admin)"><strong style="color:var(--admin)">The Admin container is overflowing.</strong><br>Work 25 min, stop. Can any of this be automated, delegated, or eliminated? Mark repeating tasks as Recurring so they self-manage.</div>
+  <div class="rule-card" style="border-color:var(--legacy)"><strong style="color:var(--legacy)">A Legacy task is too overwhelming to touch.</strong><br>Use Break Down. Write the smallest possible first action → that goes into Creation or Admin. Mark the original "broken down."</div>
+  <div class="rule-card" style="border-color:var(--self)"><strong style="color:var(--self)">A Frida appointment is approaching or you've missed doses.</strong><br>Goes in Self immediately. Med continuity affects every other container. Treat it like a client deadline. Set it Recurring if it's regular.</div>
+  <div class="rule-card" style="border-color:var(--home)"><strong style="color:var(--home)">A home task needs someone else to do it.</strong><br>Add it to Home, tap ✎, set Delegate To. It stays visible with a ↗ badge until done — tracked without living in your head.</div>
+  <div class="rule-card" style="border-color:rgba(255,245,220,0.15)"><strong>Nothing got done today.</strong><br>That's a data point. At shutdown: one sentence about what blocked. Set one action for tomorrow. Don't audit the system — just restart.</div>
+  <div class="rule-card" style="border-color:rgba(255,245,220,0.15)"><strong>You don't know which container a task belongs in.</strong><br>Use the Sort a Task tool. Or: person needed → External. New thing → Creation. Existing maintenance → Admin. Weeks sitting → Legacy. Health → Self. Home/family → Home. Dollar sign → Money.</div>
+  <div class="callout info"><div class="callout-icon">ℹ️</div><div><strong>The Friday rule:</strong> Weekly review is 20 minutes max. One question: what's the single thing to change next week? Not ten. One.</div></div>
+</div>
+
+<!-- LOGGING -->
+<div class="section" id="sec-logging">
+  <div class="section-eyebrow">In the Planner</div>
+  <div class="section-title">How to <em>log</em> your day</div>
+  <div class="section-intro">Seven fields. Here's what each is for and when to fill it.</div>
+  <table class="ref-table">
+    <thead><tr><th>Field</th><th>What it is</th><th>When</th></tr></thead>
+    <tbody>
+      <tr><td>Vyvanse dots</td><td>Click your day's dot when you take meds. Turns green. Weekly consistency at a glance.</td><td>6:30am</td></tr>
+      <tr><td>Today's One Action</td><td>The single Creation task that makes today a win. If nothing else gets done, do this.</td><td>7–7:30am transition</td></tr>
+      <tr><td>Container counters</td><td>Click each container card every time you finish a task inside it. Small completion hit per close.</td><td>Each completion</td></tr>
+      <tr><td>Focus Timer</td><td>Above the timeline. Five buttons: 25m (fixed) + 3 recent customs + ＋ custom input. Start/pause/reset. Progress bar drains as you work. Pulses amber in the last 2 minutes. Browser notification on completion.</td><td>Start of any work session</td></tr>
+      <tr><td>Day Notes</td><td>Free-form. Decisions, context, ideas. Especially useful for Creation thoughts that arrive during Admin or External time.</td><td>Anytime · and at shutdown</td></tr>
+      <tr><td>Shutdown: What got done</td><td>One completion as a specific win — not "did some engineering," but "finished power architecture section of EE-001."</td><td>Shutdown 5:30pm</td></tr>
+      <tr><td>Shutdown: Tomorrow's action</td><td>Tomorrow's One Action set tonight. Removes the morning decision when meds haven't kicked in yet.</td><td>Shutdown 5:30pm</td></tr>
+    </tbody>
+  </table>
+  <div class="block">
+    <div class="block-title">Using the focus timer well</div>
+    <div class="block-body"><p>The timer works best as a <strong>session container</strong> — you commit to working on one thing for a defined stretch. 25m is the default (Pomodoro), but deep engineering often benefits from 50m once you're in flow. The three recent custom slots remember your personal preferences automatically after you use the ＋ input.</p><p style="margin-top:8px">The timer doesn't track which task you worked on — intentionally. It's a time scaffold, not a tracker. The red now-line on the timeline is your ambient day progress indicator.</p></div>
+  </div>
+  <div class="callout tip"><div class="callout-icon">💾</div><div><strong>Backup habit:</strong> Export from the planner sidebar weekly. Import restores everything including task lists, recurring settings, and schedule overrides. Takes 2 seconds and protects months of data.</div></div>
+</div>
+
+<script>
+const PREFIX = 'josg_';
+function sg(k,v){try{localStorage.setItem(PREFIX+k,v);}catch(e){}}
+function gg(k,d=''){try{const v=localStorage.getItem(PREFIX+k);return v!==null?v:d;}catch(e){return d;}}
+function sgj(k,v){try{localStorage.setItem(PREFIX+k,JSON.stringify(v));}catch(e){}}
+function ggj(k,d=[]){try{const v=localStorage.getItem(PREFIX+k);return v!==null?JSON.parse(v):d;}catch(e){return d;}}
+
+function show(id,el){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  el.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(id==='sorter')renderHistory();
+}
+
+const sortFlow=[
+  {q:"Does completing this task require another person — a reply, a meeting, coordination?",opts:[{label:"Yes — someone else is needed",next:'external'},{label:"No — I can do it alone",next:1}]},
+  {q:"Does this task move Escheron forward in a new way — creating, designing, strategizing?",opts:[{label:"Yes — building something new",next:'creation'},{label:"No — maintaining or repeating",next:2}]},
+  {q:"Is this a financial or money task?",opts:[{label:"Yes",next:'money'},{label:"No",next:3}]},
+  {q:"Is this a home or family task?",opts:[{label:"Yes — domestic or family",next:'home'},{label:"No",next:4}]},
+  {q:"Is this about your health, ADHD treatment, or personal wellbeing?",opts:[{label:"Yes — health or self-care",next:'self'},{label:"No",next:5}]},
+  {q:"Has this been sitting undone for 2–3+ weeks, or does it feel emotionally sticky?",opts:[{label:"Yes — it's been sitting there",next:'legacy'},{label:"No — it's new and mechanical",next:'admin'}]},
+];
+
+function getDetailStep(k){
+  if(k==='legacy')return{type:'legacy-move',label:'What move will you make on this Legacy item?',options:[{key:'close',label:'✓ Close',hint:'Done or no longer matters'},{key:'decide',label:'→ Decide',hint:'Make the decision this session'},{key:'delegate',label:'↗ Delegate',hint:'Assign to someone else'},{key:'breakdown',label:'⊞ Break Down',hint:'Split into smaller tasks'},{key:'defer',label:'⏱ Defer',hint:'Give it a future date'}]};
+  if(k==='self')return{type:'self-detail',label:'Which Self sub-area, and how urgent?',subareas:['ADHD & Frida','Health & Medical','Personal Development','Exercise & Sleep'],urgencies:[{key:'high',label:'🔴 High — needs action soon'},{key:'medium',label:'🟡 Medium — this week'},{key:'low',label:'🟢 Low — when I can'}]};
+  if(k==='home')return{type:'home-subarea',label:'Which Home sub-area?'};
+  if(k==='money')return{type:'money-due',label:'Does this have a due date?'};
+  return null;
+}
+
+const results={
+  creation:{name:'Creation',color:'var(--creation-bg)',border:'var(--creation-border)',badge:'#4ade80',badgeBg:'rgba(74,222,128,0.15)',why:"This builds Escheron forward. Tackle it during your morning deep work block (7:30–11:30am). Set it as your One Action if it's the most important thing today."},
+  external:{name:'External',color:'var(--external-bg)',border:'var(--external-border)',badge:'#60a5fa',badgeBg:'rgba(96,165,250,0.15)',why:"This involves another person. Handle it during your midday block (1–3pm). Don't act on it during Creation time."},
+  admin:   {name:'Admin',  color:'var(--admin-bg)',   border:'var(--admin-border)',  badge:'#fbbf24',badgeBg:'rgba(251,191,36,0.15)', why:"Recurring or mechanical. Work it during a 25-minute Admin slot. Consider marking it Recurring if it repeats."},
+  legacy:  {name:'Legacy', color:'var(--legacy-bg)',  border:'var(--legacy-border)', badge:'#f87171',badgeBg:'rgba(248,113,113,0.15)',why:"This has been sitting too long. In your next 25-min session, make the move you chose."},
+  self:    {name:'Self',   color:'var(--self-bg)',    border:'var(--self-border)',   badge:'#c084fc',badgeBg:'rgba(192,132,252,0.15)',why:"A health or self-care task. Check in during the morning transition (7:00–7:30am) or before its deadline."},
+  home:    {name:'Home',   color:'var(--home-bg)',    border:'var(--home-border)',   badge:'#38bdf8',badgeBg:'rgba(56,189,248,0.15)', why:"A domestic or family task. Handle it in the 3:30pm Admin + Home block. Return to your current work block now."},
+  money:   {name:'Money',  color:'var(--money-bg)',   border:'var(--money-border)',  badge:'#34d399',badgeBg:'rgba(52,211,153,0.15)', why:"A financial task. Handle it before its due date. Mark it Recurring if it repeats (HST, invoices, etc.)."},
+};
+
+let step=0,currentTask='',pendingContainer=null,pendingExtras={};
+
+function startSort(){
+  currentTask=document.getElementById('task-input').value.trim();
+  if(!currentTask)return;
+  step=0;pendingContainer=null;pendingExtras={};
+  document.getElementById('sort-result').style.display='none';
+  document.getElementById('sort-detail').style.display='none';
+  document.getElementById('sort-questions').style.display='block';
+  renderQ();
+}
+
+function renderQ(){
+  const q=sortFlow[step];
+  document.getElementById('sort-q').textContent=q.q;
+  const opts=document.getElementById('sort-opts');
+  opts.innerHTML='';
+  q.opts.forEach(o=>{
+    const btn=document.createElement('button');btn.className='sort-opt';btn.textContent=o.label;
+    btn.onclick=()=>handleAnswer(o.next);opts.appendChild(btn);
+  });
+}
+
+function handleAnswer(next){
+  if(typeof next==='string'){
+    const detail=getDetailStep(next);
+    if(detail){pendingContainer=next;pendingExtras={};document.getElementById('sort-questions').style.display='none';showDetailStep(detail,next);}
+    else showResult(next,{});
+  }else{step=next;renderQ();}
+}
+
+function showDetailStep(detail,containerKey){
+  const d=document.getElementById('sort-detail');d.style.display='block';d.innerHTML='';
+  const lbl=document.createElement('div');lbl.style.cssText='font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;line-height:1.4;';lbl.textContent=detail.label;d.appendChild(lbl);
+
+  if(detail.type==='legacy-move'){
+    detail.options.forEach(opt=>{
+      const btn=document.createElement('button');btn.className='sort-opt';btn.style.textAlign='left';
+      btn.innerHTML=`<span style="font-weight:700">${opt.label}</span><span style="font-size:11px;opacity:0.6;display:block;margin-top:2px">${opt.hint}</span>`;
+      btn.onclick=()=>{pendingExtras.move=opt.key;opt.key==='defer'?showDeferDateStep():showResult(pendingContainer,pendingExtras);};
+      d.appendChild(btn);
+    });
+    addSkipBtn(d,containerKey);
+  }
+  else if(detail.type==='self-detail'){
+    const subLbl=document.createElement('div');subLbl.style.cssText='font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-bottom:6px;';subLbl.textContent='Sub-area';d.appendChild(subLbl);
+    const subRow=document.createElement('div');subRow.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;';
+    detail.subareas.forEach(sa=>{
+      const btn=document.createElement('button');btn.className='sort-opt';btn.style.cssText='padding:6px 12px;font-size:12px;';btn.textContent=sa;
+      btn.onclick=()=>{subRow.querySelectorAll('.sort-opt').forEach(b=>b.classList.remove('selected-opt'));btn.classList.add('selected-opt');pendingExtras.subarea=sa;};
+      subRow.appendChild(btn);
+    });d.appendChild(subRow);
+    const urgLbl=document.createElement('div');urgLbl.style.cssText='font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-bottom:6px;';urgLbl.textContent='Urgency';d.appendChild(urgLbl);
+    const urgRow=document.createElement('div');urgRow.style.cssText='display:flex;flex-direction:column;gap:5px;margin-bottom:14px;';
+    detail.urgencies.forEach(u=>{
+      const btn=document.createElement('button');btn.className='sort-opt';btn.textContent=u.label;
+      btn.onclick=()=>{urgRow.querySelectorAll('.sort-opt').forEach(b=>b.classList.remove('selected-opt'));btn.classList.add('selected-opt');pendingExtras.urgency=u.key;};
+      urgRow.appendChild(btn);
+    });d.appendChild(urgRow);
+    const saveBtn=document.createElement('button');saveBtn.className='sort-opt';saveBtn.style.cssText='background:var(--text);color:white;font-weight:700;margin-top:4px;';saveBtn.textContent='Save to Self →';
+    saveBtn.onclick=()=>showResult(pendingContainer,pendingExtras);d.appendChild(saveBtn);
+    addSkipBtn(d,containerKey);
+  }
+  else if(detail.type==='home-subarea'){
+    let areas=['House & Maintenance','Kids & School','GTA Search'];
+    try{const s=localStorage.getItem('jos_home_subareas');if(s)areas=JSON.parse(s);}catch(e){}
+    areas.forEach(sa=>{
+      const btn=document.createElement('button');btn.className='sort-opt';btn.textContent=sa;
+      btn.onclick=()=>{pendingExtras.subarea=sa;showResult(pendingContainer,pendingExtras);};d.appendChild(btn);
+    });
+    addSkipBtn(d,containerKey);
+  }
+  else if(detail.type==='money-due'){
+    const noBtn=document.createElement('button');noBtn.className='sort-opt';noBtn.textContent='No due date';noBtn.onclick=()=>showResult(pendingContainer,pendingExtras);d.appendChild(noBtn);
+    const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;align-items:center;margin-top:8px;';
+    const inp=document.createElement('input');inp.type='date';inp.min=new Date().toISOString().slice(0,10);inp.style.cssText='background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:13px;color:var(--text);flex:1;';
+    const yBtn=document.createElement('button');yBtn.className='sort-opt';yBtn.style.cssText='background:var(--text);color:white;font-weight:700;';yBtn.textContent='Set date →';
+    yBtn.onclick=()=>{if(inp.value)pendingExtras.dueDate=inp.value;showResult(pendingContainer,pendingExtras);};
+    row.appendChild(inp);row.appendChild(yBtn);d.appendChild(row);
+  }
+}
+
+function showDeferDateStep(){
+  const d=document.getElementById('sort-detail');d.innerHTML='';
+  const lbl=document.createElement('div');lbl.style.cssText='font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;';lbl.textContent='Defer until…';d.appendChild(lbl);
+  const row=document.createElement('div');row.style.cssText='display:flex;gap:8px;align-items:center;';
+  const inp=document.createElement('input');inp.type='date';inp.min=new Date().toISOString().slice(0,10);inp.style.cssText='background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:13px;color:var(--text);flex:1;';
+  const btn=document.createElement('button');btn.className='sort-opt';btn.style.cssText='background:var(--text);color:white;font-weight:700;';btn.textContent='Defer →';
+  btn.onclick=()=>{if(inp.value)pendingExtras.deferUntil=inp.value;showResult(pendingContainer,pendingExtras);};
+  row.appendChild(inp);row.appendChild(btn);d.appendChild(row);
+}
+
+function addSkipBtn(parent,containerKey){
+  const s=document.createElement('button');s.style.cssText='background:none;border:none;font-size:11px;color:var(--dim);cursor:pointer;margin-top:10px;padding:4px 0;text-decoration:underline;display:block;';
+  s.textContent='Skip — just add to container';s.onclick=()=>showResult(containerKey,pendingExtras);parent.appendChild(s);
+}
+
+function saveTaskToPlanner(containerKey,text,extras){
+  try{
+    const key='jos_tasks_'+containerKey;
+    const existing=JSON.parse(localStorage.getItem(key)||'[]');
+    existing.push({id:Date.now().toString(),text:text.trim(),done:false,created:new Date().toISOString().slice(0,10),source:'sorter',...extras});
+    localStorage.setItem(key,JSON.stringify(existing));return true;
+  }catch(e){return false;}
+}
+
+function showResult(key,extras){
+  document.getElementById('sort-questions').style.display='none';
+  document.getElementById('sort-detail').style.display='none';
+  const r=results[key];
+  const el=document.getElementById('sort-result');
+  el.style.display='block';el.style.background=r.color;el.style.border='1px solid '+r.border;
+  document.getElementById('sort-container-name').textContent=r.name;
+  const saved=saveTaskToPlanner(key,currentTask,extras||{});
+  let xtra='';
+  if(extras){
+    const p=[];
+    if(extras.move){const m={close:'Close',decide:'Decide',delegate:'Delegate',breakdown:'Break Down',defer:'Defer'};p.push('Move: '+(m[extras.move]||extras.move));}
+    if(extras.deferUntil)p.push('Deferred until '+extras.deferUntil);
+    if(extras.subarea)p.push('Sub-area: '+extras.subarea);
+    if(extras.urgency)p.push({high:'🔴 High',medium:'🟡 Medium',low:'🟢 Low'}[extras.urgency]||extras.urgency);
+    if(extras.dueDate)p.push('Due: '+extras.dueDate);
+    if(p.length)xtra=`<div style="font-size:11px;opacity:0.7;margin-top:4px;">${p.join(' · ')}</div>`;
+  }
+  const savedLine=saved?`<div style="margin-top:8px;padding:6px 10px;background:rgba(255,255,255,0.15);border-radius:5px;font-size:11px;font-weight:600;">✓ Saved to <strong>${r.name}</strong>${xtra}</div>`:'';
+  document.getElementById('sort-why').innerHTML=r.why+savedLine;
+  const hist=ggj('history',[]);
+  hist.unshift({task:currentTask,container:key,time:new Date().toISOString(),extras:extras||{}});
+  sgj('history',hist.slice(0,20));
+  renderHistory();
+}
+
+function resetSort(){
+  document.getElementById('task-input').value='';
+  document.getElementById('sort-result').style.display='none';
+  document.getElementById('sort-questions').style.display='none';
+  document.getElementById('sort-detail').style.display='none';
+  step=0;currentTask='';pendingContainer=null;pendingExtras={};
+}
+
+function renderHistory(){
+  const hist=ggj('history',[]);
+  const wrap=document.getElementById('sort-history');
+  const list=document.getElementById('history-list');
+  if(!hist.length){wrap.style.display='none';return;}
+  wrap.style.display='block';list.innerHTML='';
+  hist.slice(0,8).forEach(h=>{
+    const r=results[h.container];
+    const li=document.createElement('li');li.className='history-item';
+    const d=new Date(h.time);const ds=d.toLocaleDateString('en-CA',{month:'short',day:'numeric'});
+    let xt='';
+    if(h.extras){const p=[];if(h.extras.move)p.push(h.extras.move);if(h.extras.subarea)p.push(h.extras.subarea);if(h.extras.urgency)p.push(h.extras.urgency);if(h.extras.dueDate)p.push('due '+h.extras.dueDate);if(p.length)xt=` <span style="opacity:0.5;font-size:9px">· ${p.join(' · ')}</span>`;}
+    li.innerHTML=`<span class="history-badge" style="background:${r.badgeBg};color:${r.badge}">${r.name}</span><span class="history-task">${h.task}${xt}</span><span style="font-size:10px;color:var(--dim)">${ds}</span>`;
+    list.appendChild(li);
+  });
+}
+
+function clearHistory(){sgj('history',[]);renderHistory();}
+renderHistory();
+</script>
+</body>
+</html>
