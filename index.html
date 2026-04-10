@@ -755,6 +755,317 @@
     line-height: 1.5;
   }
 
+
+
+  /* ── LEGACY MOVES ── */
+  .legacy-moves {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .legacy-move-btn {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text2);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .legacy-move-btn:active { opacity: 0.7; }
+  .legacy-move-btn.close-btn    { border-color: rgba(106,255,184,0.3); color: var(--self); }
+  .legacy-move-btn.decide-btn   { border-color: rgba(255,169,71,0.3); color: var(--admin); }
+  .legacy-move-btn.delegate-btn { border-color: rgba(71,196,255,0.3); color: var(--external); }
+  .legacy-move-btn.breakdown-btn{ border-color: rgba(124,106,255,0.3); color: var(--accent); }
+  .legacy-move-btn.defer-btn    { border-color: rgba(160,160,184,0.3); color: var(--legacy); }
+
+  .legacy-move-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    padding: 2px 7px;
+    border-radius: 4px;
+    margin-top: 3px;
+  }
+  .legacy-move-tag.close    { background: rgba(106,255,184,0.1); color: var(--self); }
+  .legacy-move-tag.decide   { background: rgba(255,169,71,0.1); color: var(--admin); }
+  .legacy-move-tag.delegate { background: rgba(71,196,255,0.1); color: var(--external); }
+  .legacy-move-tag.breakdown{ background: rgba(124,106,255,0.1); color: var(--accent); }
+  .legacy-move-tag.defer    { background: rgba(160,160,184,0.1); color: var(--legacy); }
+
+  .deferred-badge {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+    font-style: italic;
+    margin-top: 3px;
+  }
+
+  /* ── SUBAREA BADGE ── */
+  .subarea-badge {
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: var(--surface2);
+    color: var(--text3);
+    border: 1px solid var(--border);
+  }
+
+  /* ── MOVE TO CONTAINER ── */
+  .move-to-sheet {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 998;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .move-to-sheet.open { opacity: 1; pointer-events: all; }
+  .move-to-content {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    padding: 20px 20px calc(var(--safe-bottom) + 20px);
+    width: 100%;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .move-to-sheet.open .move-to-content { transform: translateY(0); }
+  .move-to-handle {
+    width: 36px; height: 4px;
+    background: var(--border); border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+  .move-to-title { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+  .move-to-task-name { font-size: 13px; color: var(--text2); margin-bottom: 16px; font-style: italic; }
+  .move-to-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .move-to-btn {
+    padding: 10px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text2);
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+  }
+  .move-to-btn:active { opacity: 0.7; }
+
+  /* ── DEFER INPUT ── */
+  .defer-row {
+    display: none;
+    gap: 8px;
+    margin-top: 8px;
+    align-items: center;
+  }
+  .defer-row.visible { display: flex; }
+  .defer-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    outline: none;
+  }
+  .defer-confirm-btn {
+    padding: 8px 14px;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* ── ONE ACTION ── */
+  .one-action-card {
+    margin: 0 20px 16px;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, rgba(124,106,255,0.12), rgba(255,106,158,0.08));
+    border: 1px solid rgba(124,106,255,0.3);
+    border-radius: 14px;
+  }
+  .one-action-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+    font-family: 'DM Mono', monospace;
+  }
+  .one-action-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(124,106,255,0.3);
+    padding: 6px 0;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    outline: none;
+  }
+  .one-action-input::placeholder { color: var(--text3); font-weight: 400; }
+  .one-action-input:focus { border-bottom-color: var(--accent); }
+
+  /* ── DAY NOTES ── */
+  .day-notes-card {
+    margin: 0 20px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .day-notes-header {
+    padding: 10px 14px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+  }
+  .day-notes-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 4px 14px 12px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    outline: none;
+    resize: none;
+    min-height: 70px;
+  }
+  .day-notes-input::placeholder { color: var(--text3); }
+
+  /* ── SHUTDOWN ── */
+  .shutdown-card {
+    margin: 0 20px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+  .shutdown-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 6px;
+    font-family: 'DM Mono', monospace;
+  }
+  .shutdown-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    padding: 6px 0 8px;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 16px;
+    outline: none;
+    margin-bottom: 14px;
+  }
+  .shutdown-input:last-of-type { margin-bottom: 0; border-bottom: none; }
+  .shutdown-input::placeholder { color: var(--text3); }
+  .shutdown-input:focus { border-bottom-color: var(--accent); }
+
+  /* ── EVENT MODAL ── */
+  .event-modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 999;
+    display: flex;
+    align-items: flex-end;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .event-modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+  .event-modal {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    padding: 20px 20px calc(var(--safe-bottom) + 20px);
+    width: 100%;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .event-modal-overlay.open .event-modal { transform: translateY(0); }
+  .event-modal-handle {
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+  .event-modal-title {
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .event-modal-close {
+    width: 32px; height: 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--text2);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .event-time-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .ev-delete-btn {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    border: 1px solid rgba(255,106,106,0.3);
+    border-radius: 12px;
+    color: #ff6a6a;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+
   /* Prevent iOS auto-zoom on inputs */
   input, select, textarea, button {
     font-size: 16px !important;
@@ -802,7 +1113,16 @@
           <div class="now-sub" id="nowSub"></div>
         </div>
       </div>
-      <div class="section-label">TODAY'S EVENTS</div>
+      <!-- One Action -->
+      <div class="one-action-card">
+        <div class="one-action-label">⚡ Today's One Action</div>
+        <input type="text" class="one-action-input" id="one-action-input" placeholder="The single thing that makes today a win…" />
+      </div>
+
+      <div class="section-label" style="display:flex;align-items:center;justify-content:space-between;padding-right:20px;">
+        <span>TODAY'S EVENTS</span>
+        <button onclick="openEventModal()" style="background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;padding:4px 10px;cursor:pointer;font-family:'Syne',sans-serif;">+ Add</button>
+      </div>
       <div id="todayEvents"></div>
       <div class="section-label">QUICK CAPTURE</div>
       <div class="quick-capture">
@@ -811,6 +1131,21 @@
       </div>
       <div class="section-label">SCHEDULE</div>
       <div class="timeline" id="timeline"></div>
+
+      <!-- Day Notes -->
+      <div class="section-label">DAY NOTES</div>
+      <div class="day-notes-card">
+        <textarea class="day-notes-input" id="day-notes-input" placeholder="Capture anything — decisions, ideas, observations…"></textarea>
+      </div>
+
+      <!-- Shutdown -->
+      <div class="section-label">SHUTDOWN</div>
+      <div class="shutdown-card">
+        <div class="shutdown-label">What got done today</div>
+        <input type="text" class="shutdown-input" id="completion-input" placeholder="One specific completion…" />
+        <div class="shutdown-label" style="margin-top:10px;">Tomorrow's One Action</div>
+        <input type="text" class="shutdown-input" id="tomorrow-input" placeholder="Set it now, not in the morning…" />
+      </div>
     </div>
 
     <!-- TASKS -->
@@ -908,6 +1243,50 @@
       <span>Review</span>
     </div>
   </div>
+
+
+
+<!-- ── MOVE TO CONTAINER ── -->
+<div class="move-to-sheet" id="move-to-sheet" onclick="if(event.target===this)closeMoveToSheet()">
+  <div class="move-to-content">
+    <div class="move-to-handle"></div>
+    <div class="move-to-title">Move to…</div>
+    <div class="move-to-task-name" id="move-to-task-name"></div>
+    <div class="move-to-grid" id="move-to-grid"></div>
+    <button style="margin-top:12px;width:100%;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--text2);font-family:'Syne',sans-serif;font-size:15px;cursor:pointer;" onclick="closeMoveToSheet()">Cancel</button>
+  </div>
+</div>
+
+<!-- ── EVENT MODAL ── -->
+<div class="event-modal-overlay" id="event-modal-overlay" onclick="if(event.target===this)closeEventModal()">
+  <div class="event-modal">
+    <div class="event-modal-handle"></div>
+    <div class="event-modal-title">
+      <span id="event-modal-title-text">Add Event</span>
+      <button class="event-modal-close" onclick="closeEventModal()">×</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Title</label>
+      <input type="text" class="form-input" id="ev-title" placeholder="Event name…" />
+    </div>
+    <div class="event-time-row">
+      <div class="form-group">
+        <label class="form-label">Start</label>
+        <input type="time" class="form-input" id="ev-start" value="09:00" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">End</label>
+        <input type="time" class="form-input" id="ev-end" value="10:00" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notes</label>
+      <textarea class="form-input" id="ev-notes" placeholder="Optional notes…" style="min-height:60px;resize:none;"></textarea>
+    </div>
+    <button class="submit-btn" onclick="saveEvent()">Save Event</button>
+    <button class="ev-delete-btn" id="ev-delete-btn" onclick="deleteEvent()" style="display:none">Delete Event</button>
+  </div>
+</div>
 
 <!-- ── SYNC MODAL ── -->
 <div class="sync-modal-overlay" id="sync-modal-overlay" onclick="if(event.target===this)closeSyncModal()">
@@ -1262,7 +1641,290 @@
     _notify();
   }
 
-  // ── INIT ──────────────────────────────────────────────────────────────────
+  
+// ── ONE ACTION / DAY NOTES / SHUTDOWN ─────────────────────────────────────
+function renderDayFields() {
+  const dk = dateKey(today());
+
+  const oaEl = document.getElementById('one-action-input');
+  if (oaEl) {
+    oaEl.value = load('oneaction_' + dk, '');
+    oaEl.oninput = debounce(e => {
+      save('oneaction_' + dk, e.target.value);
+    }, 600);
+  }
+
+  const notesEl = document.getElementById('day-notes-input');
+  if (notesEl) {
+    notesEl.value = load('notes_' + dk, '');
+    notesEl.oninput = debounce(e => {
+      save('notes_' + dk, e.target.value);
+      autoResize(notesEl);
+    }, 600);
+    autoResize(notesEl);
+  }
+
+  const compEl = document.getElementById('completion-input');
+  if (compEl) {
+    compEl.value = load('completion_' + dk, '');
+    compEl.oninput = debounce(e => save('completion_' + dk, e.target.value), 600);
+  }
+
+  const tmrEl = document.getElementById('tomorrow-input');
+  if (tmrEl) {
+    tmrEl.value = load('tomorrow_' + dk, '');
+    tmrEl.oninput = debounce(e => save('tomorrow_' + dk, e.target.value), 600);
+  }
+}
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+// ── EVENTS ─────────────────────────────────────────────────────────────────
+let evEditingId   = null;
+let evEditingDate = null;
+
+function openEventModal(editId, editDk) {
+  evEditingId   = editId || null;
+  evEditingDate = editDk || dateKey(today());
+
+  document.getElementById('event-modal-title-text').textContent = editId ? 'Edit Event' : 'Add Event';
+  document.getElementById('ev-delete-btn').style.display = editId ? 'block' : 'none';
+
+  if (editId) {
+    const events = load('events_' + evEditingDate, []);
+    const ev = events.find(e => e.id === editId);
+    if (ev) {
+      document.getElementById('ev-title').value = ev.title || '';
+      document.getElementById('ev-start').value = ev.start || '09:00';
+      document.getElementById('ev-end').value   = ev.end   || '10:00';
+      document.getElementById('ev-notes').value = ev.notes || '';
+    }
+  } else {
+    document.getElementById('ev-title').value = '';
+    document.getElementById('ev-start').value = '09:00';
+    document.getElementById('ev-end').value   = '10:00';
+    document.getElementById('ev-notes').value = '';
+  }
+
+  document.getElementById('event-modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('ev-title').focus(), 300);
+}
+
+function closeEventModal() {
+  document.getElementById('event-modal-overlay').classList.remove('open');
+  evEditingId = null;
+}
+
+function saveEvent() {
+  const title = document.getElementById('ev-title').value.trim();
+  if (!title) { document.getElementById('ev-title').focus(); return; }
+
+  const start = document.getElementById('ev-start').value;
+  const end   = document.getElementById('ev-end').value;
+  const notes = document.getElementById('ev-notes').value.trim();
+  const dk    = evEditingDate || dateKey(today());
+
+  const events = load('events_' + dk, []);
+
+  if (evEditingId) {
+    const idx = events.findIndex(e => e.id === evEditingId);
+    if (idx > -1) events[idx] = { ...events[idx], title, start, end, notes };
+  } else {
+    events.push({ id: Date.now().toString(), title, start, end, notes, repeat: 'none', color: '#374151' });
+  }
+
+  events.sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+  save('events_' + dk, events);
+  closeEventModal();
+  renderToday();
+  if (currentTab === 'week') renderWeekDaySched();
+}
+
+function deleteEvent() {
+  if (!evEditingId || !evEditingDate) return;
+  if (!confirm('Delete this event?')) return;
+  const events = load('events_' + evEditingDate, []).filter(e => e.id !== evEditingId);
+  save('events_' + evEditingDate, events);
+  closeEventModal();
+  renderToday();
+  if (currentTab === 'week') renderWeekDaySched();
+}
+
+
+
+// ── RECUR FREQS ───────────────────────────────────────────────────────────
+const RECUR_FREQS = [
+  { key:'daily',     label:'Daily',     days:1   },
+  { key:'weekly',    label:'Weekly',    days:7   },
+  { key:'biweekly',  label:'Biweekly',  days:14  },
+  { key:'monthly',   label:'Monthly',   days:30  },
+  { key:'quarterly', label:'Quarterly', days:91  },
+  { key:'annually',  label:'Annually',  days:365 },
+];
+
+function advanceRecurringDate(currentDue, freqKey) {
+  const freq = RECUR_FREQS.find(f => f.key === freqKey) || RECUR_FREQS.find(f => f.key === 'weekly');
+  const base = currentDue ? new Date(currentDue + 'T00:00:00') : new Date();
+  base.setDate(base.getDate() + freq.days);
+  return base.toISOString().slice(0, 10);
+}
+
+// ── RECURRING TASK COMPLETION ─────────────────────────────────────────────
+function completeRecurring(area, taskId) {
+  const tasks = load('tasks_' + area, []);
+  const idx = tasks.findIndex(t => String(t.id) === String(taskId));
+  if (idx === -1) return;
+  const t = tasks[idx];
+  const todayStr = dateKey(today());
+
+  // Archive the completion
+  const archived = { ...t, done: true, completedOn: todayStr };
+  if (!archived.completions) archived.completions = [];
+  archived.completions.push(todayStr);
+
+  // Create fresh copy at next due date
+  const nextDue = advanceRecurringDate(t.dueDate || todayStr, t.recurFreq || 'weekly');
+  const fresh = {
+    ...t,
+    id: Date.now(),
+    done: false,
+    added: todayStr,
+    dueDate: nextDue,
+    completions: [...(t.completions || []), todayStr],
+  };
+
+  tasks.splice(idx, 1, fresh);
+
+  // Store archived separately
+  const archive = load('archive_' + area, []);
+  archive.push(archived);
+  save('archive_' + area, archive);
+  save('tasks_' + area, tasks);
+  renderTasksList();
+}
+
+// ── SCHEDULE WITH OVERRIDES ───────────────────────────────────────────────
+function getScheduleForDate(d) {
+  const dk = dateKey(d);
+  // Check for per-day override first
+  const override = load('sched_' + dk, null);
+  if (override) {
+    try { return JSON.parse(override); } catch {}
+  }
+  // Fall back to weekday/weekend templates
+  return isWeekend(d) ? SCHED_WEEKEND : SCHED_WEEKDAY;
+}
+
+// ── RECURRING EVENTS ─────────────────────────────────────────────────────
+function getEventsForDate(dk) {
+  const specific  = load('events_' + dk, []);
+  const recurring = load('recurring_events', []);
+  const d   = new Date(dk + 'T12:00:00');
+  const dow = d.getDay();
+  const applicable = recurring.filter(ev => {
+    if (ev.repeat === 'daily') return true;
+    if (ev.repeat === 'weekly') {
+      const origin = new Date((ev.originDate || dk) + 'T12:00:00');
+      return origin.getDay() === dow;
+    }
+    if (ev.repeat === 'weekdays') return dow >= 1 && dow <= 5;
+    return false;
+  }).filter(ev => ev.originDate !== dk);
+  return [...specific, ...applicable].sort((a,b) => (a.start||'').localeCompare(b.start||''));
+}
+
+// ── LEGACY MOVES ─────────────────────────────────────────────────────────
+let _legacyDeferTaskId = null;
+
+function applyLegacyMove(taskId, moveKey) {
+  const tasks = load('tasks_legacy', []);
+  const idx = tasks.findIndex(t => String(t.id) === String(taskId));
+  if (idx === -1) return;
+
+  if (moveKey === 'defer') {
+    // Show defer date input inline
+    _legacyDeferTaskId = taskId;
+    const row = document.getElementById('defer-row-' + taskId);
+    if (row) row.classList.add('visible');
+    return;
+  }
+
+  const patch = { move: moveKey };
+  if (moveKey === 'close') patch.done = true;
+  Object.assign(tasks[idx], patch);
+  save('tasks_legacy', tasks);
+  renderTasksList();
+}
+
+function confirmDefer(taskId) {
+  const input = document.getElementById('defer-input-' + taskId);
+  if (!input || !input.value) return;
+  const tasks = load('tasks_legacy', []);
+  const idx = tasks.findIndex(t => String(t.id) === String(taskId));
+  if (idx > -1) {
+    tasks[idx].move = 'defer';
+    tasks[idx].deferUntil = input.value;
+    save('tasks_legacy', tasks);
+  }
+  renderTasksList();
+}
+
+// ── MOVE TO CONTAINER ─────────────────────────────────────────────────────
+let _moveTaskId   = null;
+let _moveFromArea = null;
+
+function openMoveToSheet(taskId, fromArea) {
+  _moveTaskId   = taskId;
+  _moveFromArea = fromArea;
+  const tasks = load('tasks_' + fromArea, []);
+  const task  = tasks.find(t => String(t.id) === String(taskId));
+  document.getElementById('move-to-task-name').textContent = task ? task.text : '';
+
+  const grid = document.getElementById('move-to-grid');
+  grid.innerHTML = AREAS
+    .filter(a => a.key !== fromArea)
+    .map(a => `
+      <button class="move-to-btn" onclick="executeMoveTo('${a.key}')"
+        style="border-color:${a.color};color:${a.color}">
+        ${a.label}
+      </button>
+    `).join('');
+
+  document.getElementById('move-to-sheet').classList.add('open');
+}
+
+function closeMoveToSheet() {
+  document.getElementById('move-to-sheet').classList.remove('open');
+  _moveTaskId = null; _moveFromArea = null;
+}
+
+function executeMoveTo(toArea) {
+  if (!_moveTaskId || !_moveFromArea) return;
+  const fromTasks = load('tasks_' + _moveFromArea, []);
+  const idx = fromTasks.findIndex(t => String(t.id) === String(_moveTaskId));
+  if (idx === -1) { closeMoveToSheet(); return; }
+
+  const task = { ...fromTasks[idx], id: Date.now(), added: new Date().toISOString() };
+  // Strip container-specific extras
+  delete task.move; delete task.moveNote; delete task.deferUntil;
+  delete task.subarea; delete task.delegateTo; delete task.urgency;
+
+  fromTasks.splice(idx, 1);
+  save('tasks_' + _moveFromArea, fromTasks);
+
+  const toTasks = load('tasks_' + toArea, []);
+  toTasks.unshift(task);
+  save('tasks_' + toArea, toTasks);
+
+  closeMoveToSheet();
+  selectTaskArea(toArea);
+}
+
+
+// ── INIT ──────────────────────────────────────────────────────────────────
   async function init() {
     if (!isConfigured()) return { ok: false, reason: 'not_configured' };
     return pull();
@@ -1354,7 +2016,7 @@ function fmtDate(d) {
 }
 
 function getSchedule(d) {
-  return isWeekend(d) ? SCHED_WEEKEND : SCHED_WEEKDAY;
+  return getScheduleForDate(d);
 }
 
 function getCurrentBlock(sched) {
@@ -1414,21 +2076,25 @@ function renderToday() {
 
   // Events
   const evKey = dateKey(now);
-  const events = load('events_' + evKey, []);
+  const events = getEventsForDate(evKey);
   const evContainer = document.getElementById('todayEvents');
   if (events.length === 0) {
-    evContainer.innerHTML = '<div class="empty-state">No events today</div>';
+    evContainer.innerHTML = '<div class="empty-state">No events today — tap + to add one</div>';
   } else {
     evContainer.innerHTML = events.map(e => `
-      <div class="event-card">
+      <div class="event-card" onclick="openEventModal('${e.id}', '${evKey}')" style="cursor:pointer">
         <div class="event-time-badge">${e.start}<br>${e.end}</div>
-        <div>
+        <div style="flex:1">
           <div class="event-title">${e.title}</div>
           ${e.notes ? `<div class="event-notes">${e.notes}</div>` : ''}
         </div>
+        <div style="color:var(--text3);font-size:18px;padding-left:8px">›</div>
       </div>
     `).join('');
   }
+
+  // Render day fields (one action, notes, shutdown)
+  renderDayFields();
 
   // Timeline
   const nowH = now.getHours() + now.getMinutes() / 60;
@@ -1507,26 +2173,67 @@ function renderTasksList() {
     return 0;
   });
 
-  container.innerHTML = sorted.map(t => `
-    <div class="task-item" onclick="toggleTask('${currentTaskArea}', ${t.id})">
-      <div class="task-check ${t.done ? 'done' : ''}"></div>
-      <div class="task-body">
-        <div class="task-text ${t.done ? 'done' : ''}">${t.text}</div>
-        <div class="task-meta">
-          ${t.recurring ? `<span class="task-tag recurring">↻ ${t.recurFreq || 'recurring'}</span>` : ''}
-          ${t.urgency === 'high' ? `<span class="task-tag urgent">🔴 urgent</span>` : ''}
-          ${t.deadline ? `<span class="task-tag deadline">⏰ ${t.deadline}</span>` : ''}
-          ${t.delegateTo ? `<span class="task-tag">→ ${t.delegateTo}</span>` : ''}
-        </div>
+  const todayStr = dateKey(today());
+
+  container.innerHTML = sorted.map(t => {
+    const isDeferred = t.deferUntil && t.deferUntil > todayStr;
+    const overdueRecur = t.recurring && t.dueDate && t.dueDate < todayStr && !t.done;
+
+    const meta = `
+      ${t.subarea ? `<span class="subarea-badge">${t.subarea}</span>` : ''}
+      ${t.recurring ? `<span class="task-tag recurring" style="${overdueRecur ? 'color:var(--accent2)' : ''}">↻ ${t.recurFreq || 'recurring'}${t.dueDate ? ' · ' + t.dueDate : ''}</span>` : ''}
+      ${t.urgency === 'high' ? `<span class="task-tag urgent">🔴 urgent</span>` : ''}
+      ${t.deadline ? `<span class="task-tag deadline">⏰ ${t.deadline}</span>` : ''}
+      ${t.delegateTo ? `<span class="task-tag">→ ${t.delegateTo}</span>` : ''}
+      ${t.move && t.move !== 'close' ? `<span class="legacy-move-tag ${t.move}">${t.move}</span>` : ''}
+      ${isDeferred ? `<div class="deferred-badge">⏱ deferred until ${t.deferUntil}</div>` : ''}
+    `;
+
+    const legacyMoves = currentTaskArea === 'legacy' && !t.done ? `
+      <div class="legacy-moves">
+        <button class="legacy-move-btn close-btn"    onclick="event.stopPropagation();applyLegacyMove('${t.id}','close')">✓ Close</button>
+        <button class="legacy-move-btn decide-btn"   onclick="event.stopPropagation();applyLegacyMove('${t.id}','decide')">→ Decide</button>
+        <button class="legacy-move-btn delegate-btn" onclick="event.stopPropagation();applyLegacyMove('${t.id}','delegate')">↗ Delegate</button>
+        <button class="legacy-move-btn breakdown-btn"onclick="event.stopPropagation();applyLegacyMove('${t.id}','breakdown')">⊞ Break Down</button>
+        <button class="legacy-move-btn defer-btn"    onclick="event.stopPropagation();applyLegacyMove('${t.id}','defer')">⏱ Defer</button>
       </div>
-    </div>
-  `).join('');
+      <div class="defer-row" id="defer-row-${t.id}">
+        <input type="date" class="defer-input" id="defer-input-${t.id}" min="${todayStr}" />
+        <button class="defer-confirm-btn" onclick="event.stopPropagation();confirmDefer('${t.id}')">Set →</button>
+      </div>
+    ` : '';
+
+    const moveBtn = !t.done ? `
+      <button onclick="event.stopPropagation();openMoveToSheet('${t.id}','${currentTaskArea}')"
+        style="background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 0 0 8px;line-height:1;"
+        title="Move to another area">⇄</button>
+    ` : '';
+
+    return `
+      <div class="task-item" onclick="toggleTask('${currentTaskArea}', '${t.id}')">
+        <div class="task-check ${t.done ? 'done' : ''}"></div>
+        <div class="task-body" style="flex:1">
+          <div class="task-text ${t.done ? 'done' : ''}">${t.text}</div>
+          <div class="task-meta">${meta}</div>
+          ${legacyMoves}
+        </div>
+        ${moveBtn}
+      </div>
+    `;
+  }).join('');
 }
 
 function toggleTask(area, id) {
   const tasks = load('tasks_' + area, []);
-  const task = tasks.find(t => t.id == id);
-  if (task) { task.done = !task.done; save('tasks_' + area, tasks); }
+  const task = tasks.find(t => String(t.id) === String(id));
+  if (!task) return;
+  // Recurring tasks in admin/money/self/home get special completion
+  if (['admin','money','self','home'].includes(area) && task.recurring && !task.done) {
+    completeRecurring(area, id);
+    return;
+  }
+  task.done = !task.done;
+  save('tasks_' + area, tasks);
   renderTasksList();
 }
 
@@ -1561,7 +2268,7 @@ function renderWeek() {
     const key = dateKey(d);
     const isToday = key === dateKey(now);
     const isSelected = key === selectedWeekDay;
-    const events = load('events_' + key, []);
+    const events = getEventsForDate(key);
     return `
       <div class="day-pill ${isToday?'today':''} ${isSelected?'selected':''}" onclick="selectWeekDay('${key}')">
         <div class="day-name">${d.toLocaleDateString('en-US',{weekday:'short'})}</div>
@@ -1583,19 +2290,22 @@ function renderWeekDaySched() {
   if (!selectedWeekDay) return;
   const d = new Date(selectedWeekDay + 'T12:00:00');
   const sched = getSchedule(d);
-  const events = load('events_' + selectedWeekDay, []);
+  const events = getEventsForDate(selectedWeekDay);
   
   const el = document.getElementById('weekSched');
   let html = '';
   
   if (events.length) {
-    html += '<div class="section-label">EVENTS</div>';
+    html += `<div class="section-label" style="display:flex;align-items:center;justify-content:space-between;padding-right:20px;"><span>EVENTS</span><button onclick="openEventModal(null,'${selectedWeekDay}')" style="background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;padding:4px 10px;cursor:pointer;font-family:'Syne',sans-serif;">+ Add</button></div>`;
     html += events.map(e => `
-      <div class="event-card" style="margin-bottom:8px">
+      <div class="event-card" onclick="openEventModal('${e.id}','${selectedWeekDay}')" style="margin-bottom:8px;cursor:pointer">
         <div class="event-time-badge">${e.start}<br>${e.end}</div>
-        <div><div class="event-title">${e.title}</div>${e.notes?`<div class="event-notes">${e.notes}</div>`:''}</div>
+        <div style="flex:1"><div class="event-title">${e.title}</div>${e.notes?`<div class="event-notes">${e.notes}</div>`:''}</div>
+        <div style="color:var(--text3);font-size:18px;padding-left:8px">›</div>
       </div>
     `).join('');
+  } else {
+    html += `<div class="section-label" style="display:flex;align-items:center;justify-content:space-between;padding-right:20px;"><span>EVENTS</span><button onclick="openEventModal(null,'${selectedWeekDay}')" style="background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;padding:4px 10px;cursor:pointer;font-family:'Syne',sans-serif;">+ Add</button></div>`;
   }
 
   html += '<div class="section-label">SCHEDULE</div>';
@@ -1714,12 +2424,296 @@ function switchTab(tab) {
   if (tab === 'review') renderReview();
 
   // Pull on tab switch — silently update if remote is newer
+  // reloadAllViews already guards against active typing
   if (typeof JodySync !== 'undefined') {
     JodySync.pull().then(r => {
       if (r && r.applied) reloadAllViews();
     });
   }
 }
+
+
+// ── ONE ACTION / DAY NOTES / SHUTDOWN ─────────────────────────────────────
+function renderDayFields() {
+  const dk = dateKey(today());
+
+  const oaEl = document.getElementById('one-action-input');
+  if (oaEl) {
+    oaEl.value = load('oneaction_' + dk, '');
+    oaEl.oninput = debounce(e => {
+      save('oneaction_' + dk, e.target.value);
+    }, 600);
+  }
+
+  const notesEl = document.getElementById('day-notes-input');
+  if (notesEl) {
+    notesEl.value = load('notes_' + dk, '');
+    notesEl.oninput = debounce(e => {
+      save('notes_' + dk, e.target.value);
+      autoResize(notesEl);
+    }, 600);
+    autoResize(notesEl);
+  }
+
+  const compEl = document.getElementById('completion-input');
+  if (compEl) {
+    compEl.value = load('completion_' + dk, '');
+    compEl.oninput = debounce(e => save('completion_' + dk, e.target.value), 600);
+  }
+
+  const tmrEl = document.getElementById('tomorrow-input');
+  if (tmrEl) {
+    tmrEl.value = load('tomorrow_' + dk, '');
+    tmrEl.oninput = debounce(e => save('tomorrow_' + dk, e.target.value), 600);
+  }
+}
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+// ── EVENTS ─────────────────────────────────────────────────────────────────
+let evEditingId   = null;
+let evEditingDate = null;
+
+function openEventModal(editId, editDk) {
+  evEditingId   = editId || null;
+  evEditingDate = editDk || dateKey(today());
+
+  document.getElementById('event-modal-title-text').textContent = editId ? 'Edit Event' : 'Add Event';
+  document.getElementById('ev-delete-btn').style.display = editId ? 'block' : 'none';
+
+  if (editId) {
+    const events = load('events_' + evEditingDate, []);
+    const ev = events.find(e => e.id === editId);
+    if (ev) {
+      document.getElementById('ev-title').value = ev.title || '';
+      document.getElementById('ev-start').value = ev.start || '09:00';
+      document.getElementById('ev-end').value   = ev.end   || '10:00';
+      document.getElementById('ev-notes').value = ev.notes || '';
+    }
+  } else {
+    document.getElementById('ev-title').value = '';
+    document.getElementById('ev-start').value = '09:00';
+    document.getElementById('ev-end').value   = '10:00';
+    document.getElementById('ev-notes').value = '';
+  }
+
+  document.getElementById('event-modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('ev-title').focus(), 300);
+}
+
+function closeEventModal() {
+  document.getElementById('event-modal-overlay').classList.remove('open');
+  evEditingId = null;
+}
+
+function saveEvent() {
+  const title = document.getElementById('ev-title').value.trim();
+  if (!title) { document.getElementById('ev-title').focus(); return; }
+
+  const start = document.getElementById('ev-start').value;
+  const end   = document.getElementById('ev-end').value;
+  const notes = document.getElementById('ev-notes').value.trim();
+  const dk    = evEditingDate || dateKey(today());
+
+  const events = load('events_' + dk, []);
+
+  if (evEditingId) {
+    const idx = events.findIndex(e => e.id === evEditingId);
+    if (idx > -1) events[idx] = { ...events[idx], title, start, end, notes };
+  } else {
+    events.push({ id: Date.now().toString(), title, start, end, notes, repeat: 'none', color: '#374151' });
+  }
+
+  events.sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+  save('events_' + dk, events);
+  closeEventModal();
+  renderToday();
+  if (currentTab === 'week') renderWeekDaySched();
+}
+
+function deleteEvent() {
+  if (!evEditingId || !evEditingDate) return;
+  if (!confirm('Delete this event?')) return;
+  const events = load('events_' + evEditingDate, []).filter(e => e.id !== evEditingId);
+  save('events_' + evEditingDate, events);
+  closeEventModal();
+  renderToday();
+  if (currentTab === 'week') renderWeekDaySched();
+}
+
+
+
+// ── RECUR FREQS ───────────────────────────────────────────────────────────
+const RECUR_FREQS = [
+  { key:'daily',     label:'Daily',     days:1   },
+  { key:'weekly',    label:'Weekly',    days:7   },
+  { key:'biweekly',  label:'Biweekly',  days:14  },
+  { key:'monthly',   label:'Monthly',   days:30  },
+  { key:'quarterly', label:'Quarterly', days:91  },
+  { key:'annually',  label:'Annually',  days:365 },
+];
+
+function advanceRecurringDate(currentDue, freqKey) {
+  const freq = RECUR_FREQS.find(f => f.key === freqKey) || RECUR_FREQS.find(f => f.key === 'weekly');
+  const base = currentDue ? new Date(currentDue + 'T00:00:00') : new Date();
+  base.setDate(base.getDate() + freq.days);
+  return base.toISOString().slice(0, 10);
+}
+
+// ── RECURRING TASK COMPLETION ─────────────────────────────────────────────
+function completeRecurring(area, taskId) {
+  const tasks = load('tasks_' + area, []);
+  const idx = tasks.findIndex(t => String(t.id) === String(taskId));
+  if (idx === -1) return;
+  const t = tasks[idx];
+  const todayStr = dateKey(today());
+
+  // Archive the completion
+  const archived = { ...t, done: true, completedOn: todayStr };
+  if (!archived.completions) archived.completions = [];
+  archived.completions.push(todayStr);
+
+  // Create fresh copy at next due date
+  const nextDue = advanceRecurringDate(t.dueDate || todayStr, t.recurFreq || 'weekly');
+  const fresh = {
+    ...t,
+    id: Date.now(),
+    done: false,
+    added: todayStr,
+    dueDate: nextDue,
+    completions: [...(t.completions || []), todayStr],
+  };
+
+  tasks.splice(idx, 1, fresh);
+
+  // Store archived separately
+  const archive = load('archive_' + area, []);
+  archive.push(archived);
+  save('archive_' + area, archive);
+  save('tasks_' + area, tasks);
+  renderTasksList();
+}
+
+// ── SCHEDULE WITH OVERRIDES ───────────────────────────────────────────────
+function getScheduleForDate(d) {
+  const dk = dateKey(d);
+  // Check for per-day override first
+  const override = load('sched_' + dk, null);
+  if (override) {
+    try { return JSON.parse(override); } catch {}
+  }
+  // Fall back to weekday/weekend templates
+  return isWeekend(d) ? SCHED_WEEKEND : SCHED_WEEKDAY;
+}
+
+// ── RECURRING EVENTS ─────────────────────────────────────────────────────
+function getEventsForDate(dk) {
+  const specific  = load('events_' + dk, []);
+  const recurring = load('recurring_events', []);
+  const d   = new Date(dk + 'T12:00:00');
+  const dow = d.getDay();
+  const applicable = recurring.filter(ev => {
+    if (ev.repeat === 'daily') return true;
+    if (ev.repeat === 'weekly') {
+      const origin = new Date((ev.originDate || dk) + 'T12:00:00');
+      return origin.getDay() === dow;
+    }
+    if (ev.repeat === 'weekdays') return dow >= 1 && dow <= 5;
+    return false;
+  }).filter(ev => ev.originDate !== dk);
+  return [...specific, ...applicable].sort((a,b) => (a.start||'').localeCompare(b.start||''));
+}
+
+// ── LEGACY MOVES ─────────────────────────────────────────────────────────
+let _legacyDeferTaskId = null;
+
+function applyLegacyMove(taskId, moveKey) {
+  const tasks = load('tasks_legacy', []);
+  const idx = tasks.findIndex(t => String(t.id) === String(taskId));
+  if (idx === -1) return;
+
+  if (moveKey === 'defer') {
+    // Show defer date input inline
+    _legacyDeferTaskId = taskId;
+    const row = document.getElementById('defer-row-' + taskId);
+    if (row) row.classList.add('visible');
+    return;
+  }
+
+  const patch = { move: moveKey };
+  if (moveKey === 'close') patch.done = true;
+  Object.assign(tasks[idx], patch);
+  save('tasks_legacy', tasks);
+  renderTasksList();
+}
+
+function confirmDefer(taskId) {
+  const input = document.getElementById('defer-input-' + taskId);
+  if (!input || !input.value) return;
+  const tasks = load('tasks_legacy', []);
+  const idx = tasks.findIndex(t => String(t.id) === String(taskId));
+  if (idx > -1) {
+    tasks[idx].move = 'defer';
+    tasks[idx].deferUntil = input.value;
+    save('tasks_legacy', tasks);
+  }
+  renderTasksList();
+}
+
+// ── MOVE TO CONTAINER ─────────────────────────────────────────────────────
+let _moveTaskId   = null;
+let _moveFromArea = null;
+
+function openMoveToSheet(taskId, fromArea) {
+  _moveTaskId   = taskId;
+  _moveFromArea = fromArea;
+  const tasks = load('tasks_' + fromArea, []);
+  const task  = tasks.find(t => String(t.id) === String(taskId));
+  document.getElementById('move-to-task-name').textContent = task ? task.text : '';
+
+  const grid = document.getElementById('move-to-grid');
+  grid.innerHTML = AREAS
+    .filter(a => a.key !== fromArea)
+    .map(a => `
+      <button class="move-to-btn" onclick="executeMoveTo('${a.key}')"
+        style="border-color:${a.color};color:${a.color}">
+        ${a.label}
+      </button>
+    `).join('');
+
+  document.getElementById('move-to-sheet').classList.add('open');
+}
+
+function closeMoveToSheet() {
+  document.getElementById('move-to-sheet').classList.remove('open');
+  _moveTaskId = null; _moveFromArea = null;
+}
+
+function executeMoveTo(toArea) {
+  if (!_moveTaskId || !_moveFromArea) return;
+  const fromTasks = load('tasks_' + _moveFromArea, []);
+  const idx = fromTasks.findIndex(t => String(t.id) === String(_moveTaskId));
+  if (idx === -1) { closeMoveToSheet(); return; }
+
+  const task = { ...fromTasks[idx], id: Date.now(), added: new Date().toISOString() };
+  // Strip container-specific extras
+  delete task.move; delete task.moveNote; delete task.deferUntil;
+  delete task.subarea; delete task.delegateTo; delete task.urgency;
+
+  fromTasks.splice(idx, 1);
+  save('tasks_' + _moveFromArea, fromTasks);
+
+  const toTasks = load('tasks_' + toArea, []);
+  toTasks.unshift(task);
+  save('tasks_' + toArea, toTasks);
+
+  closeMoveToSheet();
+  selectTaskArea(toArea);
+}
+
 
 // ── INIT ──────────────────────────────────────────────────────────────────
 function init() {
@@ -1922,11 +2916,18 @@ function syncClearConfig() {
 }
 
 // Reload all visible views after a sync pull
+// Skips if user is actively typing in any input field
 function reloadAllViews() {
+  const active = document.activeElement;
+  const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+  if (isTyping) return;
+
   if (currentTab === 'today')  renderToday();
   if (currentTab === 'tasks')  { renderTaskAreas(); renderTasksList(); }
   if (currentTab === 'week')   renderWeek();
   if (currentTab === 'review') renderReview();
+  // Always re-render day fields if on today tab
+  if (currentTab === 'today') renderDayFields();
 }
 
 // Subscribe and init
