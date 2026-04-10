@@ -101,8 +101,8 @@
   const PUSH_DEBOUNCE  = 3000;
   const META_KEY       = '_meta';
   const GRAPH_FILE_URL = 'https://graph.microsoft.com/v1.0/me/drive/root:/JodyOS/data.json:/content';
-  const TOKEN_URL      = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/token';
-  const DEVICE_URL     = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode';
+  const TOKEN_URL      = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
+  const DEVICE_URL     = 'https://login.microsoftonline.com/common/oauth2/v2.0/devicecode';
   const SCOPE          = 'Files.ReadWrite offline_access';
 
   let _pushTimer  = null;
