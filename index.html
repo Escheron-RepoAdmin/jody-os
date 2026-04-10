@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="JodyOS">
@@ -755,6 +755,11 @@
     line-height: 1.5;
   }
 
+  /* Prevent iOS auto-zoom on inputs */
+  input, select, textarea, button {
+    font-size: 16px !important;
+  }
+
   /* Scrollbar */
   .view::-webkit-scrollbar { width: 3px; }
   .view::-webkit-scrollbar-track { background: transparent; }
@@ -948,8 +953,11 @@
       <div class="sync-connected-sub" id="sync-connected-info">Syncing to GitHub</div>
       <div id="sync-connected-result" class="sync-result-msg"></div>
       <div class="sync-actions" style="margin-top:24px;">
+        <button class="sync-btn-secondary" onclick="syncPullNow()">↓ Pull Latest</button>
+        <button class="sync-btn-primary" onclick="syncPushNow()">↑ Push Now</button>
+      </div>
+      <div class="sync-actions" style="margin-top:8px;">
         <button class="sync-btn-secondary" onclick="closeSyncModal()">Close</button>
-        <button class="sync-btn-primary" onclick="syncPushNow()">Sync Now →</button>
       </div>
       <button class="sync-btn-danger" onclick="syncClearConfig()">Disconnect GitHub</button>
     </div>
@@ -1704,6 +1712,13 @@ function switchTab(tab) {
   if (tab === 'week') renderWeek();
   if (tab === 'capture') renderCapture();
   if (tab === 'review') renderReview();
+
+  // Pull on tab switch — silently update if remote is newer
+  if (typeof JodySync !== 'undefined') {
+    JodySync.pull().then(r => {
+      if (r && r.applied) reloadAllViews();
+    });
+  }
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────
@@ -1884,7 +1899,19 @@ async function syncPushNow() {
   const result = await JodySync.push();
   syncUpdateStatus();
   if (!result.ok) _showSyncMsg('sync-connected-result', false, 'Push failed: ' + result.reason);
-  else _showSyncMsg('sync-connected-result', true, 'Synced successfully');
+  else _showSyncMsg('sync-connected-result', true, 'Pushed successfully');
+}
+
+async function syncPullNow() {
+  const result = await JodySync.pull();
+  syncUpdateStatus();
+  if (!result.ok) _showSyncMsg('sync-connected-result', false, 'Pull failed: ' + result.reason);
+  else if (result.applied) {
+    reloadAllViews();
+    _showSyncMsg('sync-connected-result', true, 'Pulled latest from ' + (result.device || 'GitHub'));
+  } else {
+    _showSyncMsg('sync-connected-result', true, 'Already up to date');
+  }
 }
 
 function syncClearConfig() {
@@ -1911,6 +1938,16 @@ JodySync.onStatusChange(syncUpdateStatus);
   if (result && result.applied) reloadAllViews();
   syncUpdateStatus();
 })();
+
+// Background pull every 5 minutes while app is open
+setInterval(async () => {
+  if (typeof JodySync === 'undefined') return;
+  const r = await JodySync.pull();
+  if (r && r.applied) {
+    reloadAllViews();
+    syncUpdateStatus();
+  }
+}, 5 * 60 * 1000);
 
 // Auto-expand textareas as user types
 function autoResize(el) {
