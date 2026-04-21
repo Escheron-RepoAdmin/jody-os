@@ -3956,11 +3956,19 @@ const JodySync = (() => {
 
   async function _ghGet() {
     const { pat } = getConfig();
-    const res = await fetch(_apiUrl(), {
+    // Cache-bust: append a timestamp query param and send no-cache headers.
+    // GitHub's API serves content through Fastly, which can cache responses
+    // aggressively. Without this, background pulls can return stale data
+    // written by another device several minutes ago.
+    const url = _apiUrl() + '?t=' + Date.now();
+    const res = await fetch(url, {
+      cache: 'no-store',
       headers: {
         'Authorization': `Bearer ${pat}`,
         'Accept': 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
+        'Cache-Control': 'no-cache',
+        'If-None-Match': '', // disable conditional-request 304 path
       }
     });
     if (res.status === 404) return null;
@@ -4040,6 +4048,20 @@ const JodySync = (() => {
   }
 
   // ── PULL ──────────────────────────────────────────────────────────────────
+  //
+  // Uses GitHub's content sha as the change marker, not timestamps. Every
+  // PUT to data.json yields a new sha — the server computes it from file
+  // contents. Comparing sha values is immune to clock skew between devices.
+  //
+  // Track two sha values:
+  //   sha         — most recent sha observed (updated by BOTH get and put)
+  //   applied_sha — sha of the last snapshot actually applied to localStorage
+  //
+  // A pull applies when `remoteSha !== applied_sha`. This correctly handles:
+  //   • First pull ever (applied_sha is empty)
+  //   • Another device pushed (remoteSha changed)
+  //   • We pushed (remoteSha changed, but we also set applied_sha so the
+  //     next pull correctly skips as "we already have this")
   async function pull() {
     if (!isConfigured()) return { ok: false, reason: 'not_configured' };
     try {
@@ -4048,14 +4070,20 @@ const JodySync = (() => {
 
       const remote     = JSON.parse(raw);
       const remoteMeta = remote[META_KEY] || {};
-      const remoteTime = remoteMeta.updated ? new Date(remoteMeta.updated).getTime() : 0;
-      const lastTime   = cfgGet('last') ? new Date(cfgGet('last')).getTime() : 0;
+      const remoteSha  = cfgGet('sha');          // updated by _ghGet just now
+      const appliedSha = cfgGet('applied_sha');
 
-      if (remoteTime <= lastTime) return { ok: true, skipped: true };
+      console.log(`[JodySync pull] remote=${remoteMeta.updated} (${remoteMeta.device}) remoteSha=${remoteSha.slice(0,7)} appliedSha=${appliedSha.slice(0,7) || '(none)'}`);
+
+      if (remoteSha && remoteSha === appliedSha) {
+        return { ok: true, skipped: true };
+      }
 
       _apply(remote);
+      cfgSet('applied_sha', remoteSha);
       cfgSet('last', remoteMeta.updated || new Date().toISOString());
       _notify();
+      console.log(`[JodySync pull] applied ${Object.keys(remote).length} keys from ${remoteMeta.device}`);
       return { ok: true, applied: true, device: remoteMeta.device };
 
     } catch (e) {
@@ -4077,6 +4105,9 @@ const JodySync = (() => {
       const snapshot = _snapshot();
       snapshot[META_KEY] = { updated: now, device: cfgGet('device', _defaultDevice()), version: DATA_VERSION };
       await _ghPut(JSON.stringify(snapshot, null, 2));
+      // _ghPut already stored the new sha via cfgSet('sha', ...). Mark that
+      // same sha as "applied" so the next pull correctly skips our own data.
+      cfgSet('applied_sha', cfgGet('sha'));
       cfgSet('last', now);
       _pushing = false;
       _notify();
@@ -4105,7 +4136,7 @@ const JodySync = (() => {
   }
 
   function clearConfig() {
-    ['pat','repo','device','last','sha'].forEach(k => cfgDel(k));
+    ['pat','repo','device','last','sha','applied_sha'].forEach(k => cfgDel(k));
     _notify();
   }
 
@@ -4166,13 +4197,29 @@ async function syncPushNow() {
 }
 
 async function syncPullNow() {
+  // Brief visual feedback — set label so user sees the action took effect
+  const lbl = document.getElementById('sync-label');
+  const priorLabel = lbl ? lbl.textContent : '';
+  if (lbl) lbl.textContent = 'Pulling…';
+
   const result = await JodySync.pull();
-  syncUpdateStatusBar();
+
   if (!result.ok) {
+    if (lbl) lbl.textContent = priorLabel;
     _showSyncMsg('sync-test-result', false, 'Pull failed: ' + result.reason);
-  } else if (result.applied) {
-    reloadAllViews();
+    syncUpdateStatusBar();
+    return;
   }
+  if (result.applied) {
+    reloadAllViews();
+    if (lbl) lbl.textContent = '↓ ' + (result.device || 'remote') + ' · just now';
+  } else if (result.skipped) {
+    if (lbl) lbl.textContent = '✓ already up to date';
+  } else if (result.empty) {
+    if (lbl) lbl.textContent = '(remote is empty)';
+  }
+  // After a short delay let the status bar resume normal rendering
+  setTimeout(syncUpdateStatusBar, 1500);
 }
 
 // Reload views without clobbering any input the user is actively editing

@@ -1465,11 +1465,19 @@
 
   async function _ghGet() {
     const { pat } = getConfig();
-    const res = await fetch(_apiUrl(), {
+    // Cache-bust: append a timestamp query param and send no-cache headers.
+    // GitHub's API serves content through Fastly, which can cache responses
+    // aggressively. Without this, background pulls can return stale data
+    // written by another device several minutes ago.
+    const url = _apiUrl() + '?t=' + Date.now();
+    const res = await fetch(url, {
+      cache: 'no-store',
       headers: {
         'Authorization': `Bearer ${pat}`,
         'Accept': 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
+        'Cache-Control': 'no-cache',
+        'If-None-Match': '', // disable conditional-request 304 path
       }
     });
     if (res.status === 404) return null;
@@ -1549,6 +1557,11 @@
   }
 
   // ── PULL ──────────────────────────────────────────────────────────────────
+  // ── PULL ──────────────────────────────────────────────────────────────────
+  //
+  // Uses GitHub's content sha as the change marker, not timestamps. Every
+  // PUT to data.json yields a new sha — the server computes it from file
+  // contents. Comparing sha values is immune to clock skew between devices.
   async function pull() {
     if (!isConfigured()) return { ok: false, reason: 'not_configured' };
     try {
@@ -1557,14 +1570,20 @@
 
       const remote     = JSON.parse(raw);
       const remoteMeta = remote[META_KEY] || {};
-      const remoteTime = remoteMeta.updated ? new Date(remoteMeta.updated).getTime() : 0;
-      const lastTime   = cfgGet('last') ? new Date(cfgGet('last')).getTime() : 0;
+      const remoteSha  = cfgGet('sha');          // updated by _ghGet just now
+      const appliedSha = cfgGet('applied_sha');
 
-      if (remoteTime <= lastTime) return { ok: true, skipped: true };
+      console.log(`[JodySync pull] remote=${remoteMeta.updated} (${remoteMeta.device}) remoteSha=${remoteSha.slice(0,7)} appliedSha=${appliedSha.slice(0,7) || '(none)'}`);
+
+      if (remoteSha && remoteSha === appliedSha) {
+        return { ok: true, skipped: true };
+      }
 
       _apply(remote);
+      cfgSet('applied_sha', remoteSha);
       cfgSet('last', remoteMeta.updated || new Date().toISOString());
       _notify();
+      console.log(`[JodySync pull] applied ${Object.keys(remote).length} keys from ${remoteMeta.device}`);
       return { ok: true, applied: true, device: remoteMeta.device };
 
     } catch (e) {
@@ -1586,6 +1605,8 @@
       const snapshot = _snapshot();
       snapshot[META_KEY] = { updated: now, device: cfgGet('device', _defaultDevice()), version: DATA_VERSION };
       await _ghPut(JSON.stringify(snapshot, null, 2));
+      // Mark our just-pushed sha as applied so we don't re-apply our own data.
+      cfgSet('applied_sha', cfgGet('sha'));
       cfgSet('last', now);
       _pushing = false;
       _notify();
@@ -1614,7 +1635,7 @@
   }
 
   function clearConfig() {
-    ['pat','repo','device','last','sha'].forEach(k => cfgDel(k));
+    ['pat','repo','device','last','sha','applied_sha'].forEach(k => cfgDel(k));
     _notify();
   }
 
