@@ -10,7 +10,7 @@
   "jos_events_2026-04-20": "[{\"id\":\"1776738630703\",\"title\":\"yjhtyjryujuy\",\"start\":\"09:00\",\"end\":\"10:00\",\"color\":\"#e63f6e\",\"notes\":\"\",\"repeat\":\"none\"}]",
   "jos_tasks_external": "[{\"id\":\"1773253615327\",\"text\":\"Apply for Canada Permanent Residence\",\"done\":false},{\"id\":\"1773256623919\",\"text\":\"Quote Trough, Payoff, Takeup\",\"done\":false},{\"id\":\"1773256690912\",\"text\":\"Design PTFE Extruder, Preform Press, Etcher\",\"done\":false},{\"id\":\"1773256603579\",\"text\":\"Revise XYZ Invoices\",\"done\":false},{\"id\":\"1773256580281\",\"text\":\"Negotiate Settlement with Mao\",\"done\":false},{\"id\":\"1773279018784\",\"text\":\"Invoices to Rob - Coils, Extruder Parts\",\"done\":false},{\"id\":\"1773279047193\",\"text\":\"Find Evaporators for Rob\",\"done\":false},{\"id\":1774273996836,\"text\":\"Biomerics follow-up\",\"done\":false}]",
   "jos_events_2026-03-13": "[{\"id\":\"1773258293862\",\"title\":\"Lunch with Faith and Cole\",\"start\":\"14:30\",\"end\":\"17:00\",\"color\":\"#374151\",\"notes\":\"Taste the Thai\",\"repeat\":\"none\"},{\"id\":\"1773364446658\",\"title\":\"Fidium Install\",\"start\":\"10:00\",\"end\":\"12:00\",\"color\":\"#374151\",\"notes\":\"\",\"repeat\":\"none\"}]",
-  "jos_oneaction_2026-04-21": "\"Test\"",
+  "jos_oneaction_2026-04-21": "\"\"",
   "jos_home_subareas": "[\"General Family\",\"Future Planning\",\"Legal\"]",
   "jos_recurring_events": "[]",
   "jos_tasks_admin": "[{\"id\":1773424529820,\"text\":\"Review e-mails/portals and quick reply or log\",\"done\":false,\"recurring\":true,\"recurFreq\":\"daily\"},{\"id\":1773573034783,\"text\":\"Expense reports to Odoo\",\"done\":false,\"recurring\":true,\"recurFreq\":\"daily\"}]",
@@ -27,7 +27,7 @@
   "jos_dayIndex": "2",
   "jos_view": "day",
   "_meta": {
-    "updated": "2026-04-21T02:38:41.586Z",
+    "updated": "2026-04-21T02:38:45.468Z",
     "device": "iOS",
     "version": 3
   }
