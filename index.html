@@ -1769,7 +1769,7 @@ function advanceRecurringDate(currentDue, freqKey) {
   const freq = RECUR_FREQS.find(f => f.key === freqKey) || RECUR_FREQS.find(f => f.key === 'weekly');
   const base = currentDue ? new Date(currentDue + 'T00:00:00') : new Date();
   base.setDate(base.getDate() + freq.days);
-  return base.toISOString().slice(0, 10);
+  return localDateStr(base);
 }
 
 // ── RECURRING TASK COMPLETION ─────────────────────────────────────────────
@@ -1999,7 +1999,8 @@ let captureArea = 'creation';
 
 // ── HELPERS ───────────────────────────────────────────────────────────────
 function today() { return new Date(); }
-function dateKey(d) { return d.toISOString().split('T')[0]; }
+function localDateStr(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function dateKey(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function dayOfWeek(d) { return d.getDay(); } // 0=Sun
 function isWeekend(d) { const dow = dayOfWeek(d); return dow === 0 || dow === 6; }
 
@@ -2576,7 +2577,7 @@ function advanceRecurringDate(currentDue, freqKey) {
   const freq = RECUR_FREQS.find(f => f.key === freqKey) || RECUR_FREQS.find(f => f.key === 'weekly');
   const base = currentDue ? new Date(currentDue + 'T00:00:00') : new Date();
   base.setDate(base.getDate() + freq.days);
-  return base.toISOString().slice(0, 10);
+  return localDateStr(base);
 }
 
 // ── RECURRING TASK COMPLETION ─────────────────────────────────────────────
