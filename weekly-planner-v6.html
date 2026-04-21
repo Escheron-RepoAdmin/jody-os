@@ -3218,12 +3218,15 @@ function setView(v) {
   if (v==='week')   renderWeekView(wk);
   if (v==='review') renderReview(wk);
 
-  // Pull on view switch — silently update if remote is newer (matches iOS)
-  if (typeof JodySync !== 'undefined') {
+  // Pull on view switch — silently update if remote is newer (matches iOS).
+  // Wrapped in try/catch because setView runs at initial render, which is
+  // BEFORE `const JodySync` is initialized — accessing it via `typeof` would
+  // throw ReferenceError in the temporal dead zone.
+  try {
     JodySync.pull().then(r => {
       if (r && r.applied) reloadAllViews();
     });
-  }
+  } catch {}
 }
 
 // ══════════════════════════════════════════════════════
