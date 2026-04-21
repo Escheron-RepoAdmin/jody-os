@@ -667,10 +667,6 @@ body { background: var(--bg); font-family: 'Outfit', sans-serif; color: var(--in
     <div class="logo">Operating System
       <span>Jody Wood · Escheron · v6</span>
     </div>
-    <a href="planner-guide.html" target="_blank" rel="noopener"
-       style="display:inline-block;margin-top:8px;font-size:10px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;letter-spacing:0.5px;text-decoration:none;transition:color 0.15s;"
-       onmouseover="this.style.color='rgba(255,255,255,0.8)'"
-       onmouseout="this.style.color='rgba(255,255,255,0.45)'">Guide ↗</a>
   </div>
 
   <div>
@@ -723,8 +719,7 @@ body { background: var(--bg); font-family: 'Outfit', sans-serif; color: var(--in
     <div class="sync-status" id="sync-status-bar" onclick="openSyncModal()" title="GitHub sync settings">
       <div class="sync-dot unconfigured" id="sync-dot"></div>
       <div class="sync-label" id="sync-label">GitHub sync · tap to set up</div>
-      <button class="sync-push-btn" id="sync-pull-btn" title="Pull from GitHub now" onclick="event.stopPropagation();syncPullNow()" style="display:none">↓</button>
-      <button class="sync-push-btn" id="sync-push-btn" title="Push to GitHub now" onclick="event.stopPropagation();syncPushNow()" style="display:none">↑</button>
+      <button class="sync-push-btn" id="sync-push-btn" title="Push now" onclick="event.stopPropagation();syncPushNow()" style="display:none">↑</button>
     </div>
 
     <div style="font-size:9px;color:rgba(255,255,255,0.45);margin-top:6px;line-height:1.4;">Data saved locally. Sync to GitHub to share with mobile.</div>
@@ -1018,12 +1013,13 @@ const PREFIX = 'jos_'; // Jody OS
 function ls_get(key, def = '') {
   try {
     const v = localStorage.getItem(PREFIX + key);
-    return v !== null ? v : def;
+    if (v === null) return def;
+    try { return JSON.parse(v); } catch { return v; }
   } catch(e) { return def; }
 }
 function ls_set(key, val) {
   try {
-    localStorage.setItem(PREFIX + key, val);
+    localStorage.setItem(PREFIX + key, JSON.stringify(val));
     flashSave();
     if (typeof JodySync !== 'undefined') JodySync.schedulePush();
   } catch(e) { console.warn('localStorage unavailable'); }
@@ -1076,7 +1072,7 @@ function exportData() {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'jody-os-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.download = 'jody-os-backup-' + dateKey(new Date()) + '.json';
   a.click();
 }
 
@@ -1169,9 +1165,8 @@ const SCHEDULES = {
     { start:21,  end:21.5, type:'shutdown', label:'Sleep',    title:'Wind Down',                      sub:'' },
   ],
   1: [ // Monday — admin kickoff
-    ...BASE.slice(0,2),
-    { start:7.5,  end:11,   type:'creation', label:'Creation',  title:'Deep Work — Escheron',              sub:'Build, strategy, engineering · peak med window' },
-    { start:11,   end:11.5, type:'admin',    label:'Admin',     title:'Admin Container — Weekly Kickoff',  sub:'Monday admin pass · set week in motion' },
+    ...BASE.slice(0,3),
+    { start:11,  end:11.5, type:'admin',    label:'Admin',    title:'Admin Container — Weekly Kickoff', sub:'Monday admin pass · set week in motion' },
     ...BASE.slice(3),
   ],
   2: BASE, // Tuesday
@@ -1182,11 +1177,10 @@ const SCHEDULES = {
   ],
   4: BASE, // Thursday
   5: [ // Friday — review
-    ...BASE.slice(0,2),
-    { start:7.5,  end:11,   type:'creation', label:'Creation', title:'Deep Work — Escheron',            sub:'Build, strategy, engineering · peak med window' },
-    { start:11,   end:11.5, type:'admin',    label:'Admin',    title:'Admin Container',                sub:'Weekly debris catch' },
-    { start:11.5, end:12,   type:'self',     label:'Review',   title:'Weekly Review · 20 min max',     sub:'Open Review tab · one system change only' },
-    ...BASE.slice(4),
+    ...BASE.slice(0,3),
+    { start:11,  end:11.5, type:'admin',    label:'Admin',    title:'Admin Container',                sub:'Weekly debris catch' },
+    { start:11.5,end:12,   type:'self',     label:'Review',   title:'Weekly Review · 20 min max',     sub:'Open Review tab · one system change only' },
+    ...BASE.slice(3),
   ],
   6: [ // Saturday
     { start:6,   end:7.5,  type:'family',   label:'Family',   title:'Weekend Morning',                sub:'Meds optional on weekends' },
@@ -1225,8 +1219,12 @@ function getWeekDates() {
 }
 function fmt(d) { return d.toLocaleDateString('en-CA', {month:'short',day:'numeric'}); }
 function isToday(d) { const n=new Date(); return d.getDate()===n.getDate()&&d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear(); }
-function localDateStr(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-function dateKey(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function dateKey(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 // ══════════════════════════════════════════════════════
 // RENDER
@@ -1538,7 +1536,7 @@ function refreshPanelCount(container) {
   const panel = document.querySelector(`.task-panel[data-container="${container}"]`);
   if (!panel) return;
   const tasks = getTasks(container);
-  const today = localDateStr(new Date());
+  const today = dateKey(new Date());
   const visible = container === 'legacy' ? tasks.filter(t => !t.deferUntil || t.deferUntil <= today) : tasks;
   const pending = visible.filter(t => !t.done).length;
   const deferred = container === 'legacy' ? tasks.filter(t => t.deferUntil && t.deferUntil > today).length : 0;
@@ -1632,7 +1630,7 @@ function renderTaskPanels() {
   wrap.innerHTML = '';
   ALL_CONTAINERS.forEach(c => {
     const tasks = getTasks(c.type);
-    const today = localDateStr(new Date());
+    const today = dateKey(new Date());
     const visibleTasks = c.type === 'legacy'
       ? tasks.filter(t => !t.deferUntil || t.deferUntil <= today)
       : tasks;
@@ -1740,7 +1738,7 @@ function makeAdminItem(t, c) {
     txtRow.appendChild(badge);
   }
   if (t.dueDate) {
-    const today = localDateStr(new Date());
+    const today = dateKey(new Date());
     const overdue = t.dueDate < today;
     const due = document.createElement('span');
     due.style.cssText = `font-size:9px;font-family:"DM Mono",monospace;color:${overdue ? '#c0392b' : 'var(--muted)'};font-weight:${overdue ? '600' : '400'};`;
@@ -1755,7 +1753,7 @@ function makeAdminItem(t, c) {
 
 // ── LEGACY body ──
 function renderLegacyBody(body, tasks, c) {
-  const today = localDateStr(new Date());
+  const today = dateKey(new Date());
   const active   = tasks.filter(t => !t.deferUntil || t.deferUntil <= today);
   const deferred = tasks.filter(t => t.deferUntil && t.deferUntil > today);
 
@@ -1893,7 +1891,7 @@ function openLegacyMoveModal(taskId, moveKey) {
       <div style="font-size:12px;color:var(--muted);margin-bottom:12px;font-style:italic">${mv.hint}</div>
       <div style="font-size:11px;font-weight:700;margin-bottom:5px;color:var(--ink)">${noteLabel}</div>
       ${moveKey === 'defer'
-        ? `<input id="lm-note" type="date" min="${localDateStr(new Date())}" value="${t.deferUntil||''}" style="background:rgba(26,23,20,0.03);border:1px solid rgba(26,23,20,0.1);border-radius:6px;padding:8px 10px;font-size:13px;color:var(--ink);width:100%;">`
+        ? `<input id="lm-note" type="date" min="${dateKey(new Date())}" value="${t.deferUntil||''}" style="background:rgba(26,23,20,0.03);border:1px solid rgba(26,23,20,0.1);border-radius:6px;padding:8px 10px;font-size:13px;color:var(--ink);width:100%;">`
         : `<textarea id="lm-note" style="width:100%;background:rgba(26,23,20,0.03);border:1px solid rgba(26,23,20,0.1);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--ink);resize:none;min-height:56px;font-family:'Outfit',sans-serif;line-height:1.5" placeholder="Optional — add context…">${t.moveNote||''}</textarea>`
       }
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
@@ -2635,7 +2633,7 @@ function advanceRecurringDate(currentDue, freqKey) {
   const freq = RECUR_FREQS.find(f => f.key === freqKey) || RECUR_FREQS.find(f => f.key === 'weekly');
   const base = currentDue ? new Date(currentDue + 'T00:00:00') : new Date();
   base.setDate(base.getDate() + freq.days);
-  return localDateStr(base);
+  return dateKey(base);
 }
 
 function completeRecurring(container, taskId) {
@@ -2643,7 +2641,7 @@ function completeRecurring(container, taskId) {
   const idx = tasks.findIndex(t => String(t.id) === String(taskId));
   if (idx === -1) return;
   const t = tasks[idx];
-  const today = localDateStr(new Date());
+  const today = dateKey(new Date());
 
   // Archive: mark done, record completion date
   const archived = { ...t, done: true, completedOn: today };
@@ -3998,22 +3996,19 @@ function syncUpdateStatusBar() {
   const s   = JodySync.getStatus();
   const dot = document.getElementById('sync-dot');
   const lbl = document.getElementById('sync-label');
-  const pushBtn = document.getElementById('sync-push-btn');
-  const pullBtn = document.getElementById('sync-pull-btn');
+  const btn = document.getElementById('sync-push-btn');
   if (!dot || !lbl) return;
 
   if (!s.configured) {
     dot.className = 'sync-dot unconfigured';
     lbl.textContent = 'GitHub sync · tap to set up';
-    if (pushBtn) pushBtn.style.display = 'none';
-    if (pullBtn) pullBtn.style.display = 'none';
+    if (btn) btn.style.display = 'none';
     return;
   }
   if (s.pushing) {
     dot.className = 'sync-dot syncing';
     lbl.textContent = 'Syncing to GitHub…';
-    if (pushBtn) pushBtn.style.display = 'none';
-    if (pullBtn) pullBtn.style.display = 'none';
+    if (btn) btn.style.display = 'none';
     return;
   }
   dot.className = 'sync-dot connected';
@@ -4028,25 +4023,7 @@ function syncUpdateStatusBar() {
   } else {
     lbl.textContent = 'GitHub sync · never synced';
   }
-  if (pushBtn) pushBtn.style.display = 'block';
-  if (pullBtn) pullBtn.style.display = 'block';
-}
-
-async function syncPullNow() {
-  const pullBtn = document.getElementById('sync-pull-btn');
-  if (pullBtn) { pullBtn.textContent = '…'; pullBtn.style.pointerEvents = 'none'; }
-  const result = await JodySync.pull();
-  if (pullBtn) { pullBtn.textContent = '↓'; pullBtn.style.pointerEvents = 'auto'; }
-  if (result.applied) {
-    render();
-    renderTaskPanels();
-    _showSyncMsg('sync-test-result', true, 'Pulled changes from ' + (result.device || 'remote') + '.');
-  } else if (result.skipped) {
-    // already current — no visual noise needed
-  } else if (!result.ok) {
-    _showSyncMsg('sync-test-result', false, 'Pull failed: ' + result.reason);
-  }
-  syncUpdateStatusBar();
+  if (btn) btn.style.display = 'block';
 }
 
 async function syncPushNow() {
@@ -4144,27 +4121,11 @@ function syncClearConfig() {
 
 JodySync.onStatusChange(syncUpdateStatusBar);
 
-const SYNC_POLL_INTERVAL = 2 * 60 * 1000; // 2 minutes
-
-async function syncAutoPoll() {
-  if (!JodySync.getStatus().configured) return;
-  const result = await JodySync.pull();
-  if (result && result.applied) {
-    render();
-    renderTaskPanels();
-  }
-  syncUpdateStatusBar();
-}
-
 (async () => {
   syncUpdateStatusBar();
-  // Pull on load
   const result = await JodySync.init();
   if (result && result.applied) { render(); renderTaskPanels(); }
   syncUpdateStatusBar();
-  // Poll for remote changes every 2 minutes
-  setInterval(syncAutoPoll, SYNC_POLL_INTERVAL);
-  // Update "X min ago" label every 60s
   setInterval(syncUpdateStatusBar, 60000);
 })();
 

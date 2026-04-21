@@ -693,29 +693,6 @@
     margin-top: 8px;
   }
 
-  .sync-device-code-display {
-    font-family: 'DM Mono', monospace;
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: 6px;
-    color: var(--text);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px 20px;
-    text-align: center;
-    margin: 16px 0;
-  }
-
-  .sync-step-label {
-    font-size: 11px;
-    font-family: 'DM Mono', monospace;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    color: var(--text3);
-    margin-bottom: 6px;
-  }
-
   .sync-result-msg {
     font-size: 13px;
     font-family: 'DM Mono', monospace;
@@ -1082,7 +1059,26 @@
 
   .task-item { animation: slideIn 0.15s ease; }
   @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
-</style>
+
+  .today-day-nav {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 20px 4px; overflow-x: auto;
+    scrollbar-width: none; -ms-overflow-style: none;
+  }
+  .today-day-nav::-webkit-scrollbar { display: none; }
+  .day-nav-arrow {
+    flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text2); font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .day-nav-arrow:hover { background: var(--surface2); }
+  .day-pills-row {
+    display: flex; gap: 6px; flex: 1; justify-content: space-between;
+  }
+
+  </style>
 </head>
 <body>
 <div id="app">
@@ -1112,6 +1108,13 @@
           <div class="now-title" id="nowTitle">Loading...</div>
           <div class="now-sub" id="nowSub"></div>
         </div>
+      </div>
+
+      <!-- Day navigation strip -->
+      <div class="today-day-nav" id="today-day-nav">
+        <button class="day-nav-arrow" onclick="shiftTodayWeek(-1)">‹</button>
+        <div class="day-pills-row" id="today-day-pills"></div>
+        <button class="day-nav-arrow" onclick="shiftTodayWeek(1)">›</button>
       </div>
       <!-- One Action -->
       <div class="one-action-card">
@@ -1323,9 +1326,7 @@
       </div>
     </div>
 
-    <!-- Step 2: removed — PAT flow has no device code step -->
-
-    <!-- Step 3: Connected -->
+    <!-- Connected state -->
     <div id="sync-step-connected" style="display:none">
       <div class="sync-connected-check">✓</div>
       <div class="sync-connected-title">Connected to GitHub</div>
@@ -1347,13 +1348,12 @@
 
 <script>
 /**
- * JodyOS OneDrive Sync Module
- * Version: 2.0.0
+ * JodyOS GitHub Sync Module
+ * Version: 3.0.0
  *
  * Bidirectional sync between localStorage (jos_ prefix) and a single
- * data.json file in OneDrive via the Microsoft Graph API.
- * Authentication uses the OAuth2 device code flow — no redirect URI,
- * no server, no secrets stored anywhere except refresh tokens in localStorage.
+ * data.json file in a GitHub repo via the GitHub Contents API.
+ * Authentication uses a fine-grained Personal Access Token stored locally.
  *
  * ─── Public API ───────────────────────────────────────────────────────────
  *
@@ -1362,75 +1362,52 @@
  *     Returns { ok, applied?, skipped?, empty?, reason? }
  *
  *   JodySync.pull()
- *     Fetch data.json from OneDrive → apply to localStorage if remote is newer.
+ *     Fetch data.json from GitHub → apply to localStorage if remote is newer.
  *     Returns { ok, applied?, skipped?, empty?, reason? }
  *
  *   JodySync.push()
- *     Write localStorage snapshot → OneDrive data.json.
+ *     Write localStorage snapshot → GitHub data.json.
  *     Returns { ok, reason? }
  *
  *   JodySync.schedulePush()
- *     Debounced push (3s). Call after every localStorage write.
+ *     Debounced push (3s). Called automatically by save().
  *
- *   JodySync.startDeviceFlow(clientId)
- *     Starts the device code auth flow.
- *     Returns { device_code, user_code, verification_uri, expires_in, interval }
- *
- *   JodySync.pollDeviceFlow(clientId, deviceCode, interval, onUpdate?)
- *     Polls for token after user signs in. Saves tokens on success.
- *     onUpdate(status) called with 'pending' | 'network_error' each poll.
- *     Returns { ok, reason? }
- *
- *   JodySync.cancelDeviceFlow()
- *     Cancels an in-progress poll.
- *
- *   JodySync.configure({ clientId?, device? })
+ *   JodySync.configure({ pat?, repo?, device? })
  *     Save config values to localStorage.
  *
  *   JodySync.clearConfig()
  *     Remove all sync config. Data is untouched.
  *
  *   JodySync.getStatus()
- *     Returns { configured, device, lastSync, pushing, tokenExpiry }
+ *     Returns { configured, device, lastSync, pushing }
  *
  *   JodySync.onStatusChange(fn)
  *     Subscribe to status changes. Returns unsubscribe function.
  *
  * ─── Config keys (jos_sync_ prefix in localStorage) ──────────────────────
  *
- *   jos_sync_client_id      Azure App (client) ID
- *   jos_sync_access_token   Current access token (expires ~1hr)
- *   jos_sync_refresh_token  Refresh token (valid 90 days, renews on use)
- *   jos_sync_token_expiry   ISO timestamp of access token expiry
- *   jos_sync_last           ISO timestamp of last successful sync
+ *   jos_sync_pat            GitHub fine-grained PAT
+ *   jos_sync_repo           owner/repo (e.g. "escheron-repoadmin/jody-os")
  *   jos_sync_device         Device label (e.g. "Desktop", "iOS")
+ *   jos_sync_last           ISO timestamp of last successful sync
+ *   jos_sync_sha            Current sha of data.json (for atomic PUT)
  *
  * ─── data.json format ────────────────────────────────────────────────────
  *
  *   {
- *     "_meta": { "updated": "ISO", "device": "Desktop", "version": 2 },
+ *     "_meta": { "updated": "ISO", "device": "Desktop", "version": 3 },
  *     "jos_tasks_creation": "[...]",
  *     "jos_tasks_admin": "[...]",
  *     ... all jos_ keys exactly as stored in localStorage
  *   }
  *
- * ─── Azure App setup (one-time, ~5 minutes) ───────────────────────────────
+ * ─── PAT setup (one-time) ────────────────────────────────────────────────
  *
- *   1. portal.azure.com → Azure Active Directory → App registrations → New
- *   2. Supported account types: Personal Microsoft accounts only
- *   3. Redirect URI: Mobile and desktop applications →
- *      https://login.microsoftonline.com/common/oauth2/nativeclient
- *   4. Under Authentication → enable "Allow public client flows" → Yes
- *   5. Copy the Application (client) ID
- *
- * ─── PWA wiring ───────────────────────────────────────────────────────────
- *
- *   // After your ls_set / ls_setJSON definitions:
- *   const _orig = ls_set;
- *   ls_set = (k, v) => { _orig(k, v); JodySync.schedulePush(); };
- *
- *   // On app load:
- *   JodySync.init().then(r => { if (r.applied) reloadViews(); });
+ *   1. github.com → Settings → Developer settings → Personal access tokens
+ *      → Fine-grained tokens → Generate new token
+ *   2. Repository access: Only select repositories → jody-os
+ *   3. Permissions → Repository → Contents: Read and write
+ *   4. Copy the token (starts with github_pat_)
  */
 
 (function (root, factory) {
@@ -1641,288 +1618,6 @@
     _notify();
   }
 
-  
-// ── ONE ACTION / DAY NOTES / SHUTDOWN ─────────────────────────────────────
-function renderDayFields() {
-  const dk = dateKey(today());
-
-  const oaEl = document.getElementById('one-action-input');
-  if (oaEl) {
-    oaEl.value = load('oneaction_' + dk, '');
-    oaEl.oninput = debounce(e => {
-      save('oneaction_' + dk, e.target.value);
-    }, 600);
-  }
-
-  const notesEl = document.getElementById('day-notes-input');
-  if (notesEl) {
-    notesEl.value = load('notes_' + dk, '');
-    notesEl.oninput = debounce(e => {
-      save('notes_' + dk, e.target.value);
-      autoResize(notesEl);
-    }, 600);
-    autoResize(notesEl);
-  }
-
-  const compEl = document.getElementById('completion-input');
-  if (compEl) {
-    compEl.value = load('completion_' + dk, '');
-    compEl.oninput = debounce(e => save('completion_' + dk, e.target.value), 600);
-  }
-
-  const tmrEl = document.getElementById('tomorrow-input');
-  if (tmrEl) {
-    tmrEl.value = load('tomorrow_' + dk, '');
-    tmrEl.oninput = debounce(e => save('tomorrow_' + dk, e.target.value), 600);
-  }
-}
-
-function debounce(fn, ms) {
-  let t;
-  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
-}
-
-// ── EVENTS ─────────────────────────────────────────────────────────────────
-let evEditingId   = null;
-let evEditingDate = null;
-
-function openEventModal(editId, editDk) {
-  evEditingId   = editId || null;
-  evEditingDate = editDk || dateKey(today());
-
-  document.getElementById('event-modal-title-text').textContent = editId ? 'Edit Event' : 'Add Event';
-  document.getElementById('ev-delete-btn').style.display = editId ? 'block' : 'none';
-
-  if (editId) {
-    const events = load('events_' + evEditingDate, []);
-    const ev = events.find(e => e.id === editId);
-    if (ev) {
-      document.getElementById('ev-title').value = ev.title || '';
-      document.getElementById('ev-start').value = ev.start || '09:00';
-      document.getElementById('ev-end').value   = ev.end   || '10:00';
-      document.getElementById('ev-notes').value = ev.notes || '';
-    }
-  } else {
-    document.getElementById('ev-title').value = '';
-    document.getElementById('ev-start').value = '09:00';
-    document.getElementById('ev-end').value   = '10:00';
-    document.getElementById('ev-notes').value = '';
-  }
-
-  document.getElementById('event-modal-overlay').classList.add('open');
-  setTimeout(() => document.getElementById('ev-title').focus(), 300);
-}
-
-function closeEventModal() {
-  document.getElementById('event-modal-overlay').classList.remove('open');
-  evEditingId = null;
-}
-
-function saveEvent() {
-  const title = document.getElementById('ev-title').value.trim();
-  if (!title) { document.getElementById('ev-title').focus(); return; }
-
-  const start = document.getElementById('ev-start').value;
-  const end   = document.getElementById('ev-end').value;
-  const notes = document.getElementById('ev-notes').value.trim();
-  const dk    = evEditingDate || dateKey(today());
-
-  const events = load('events_' + dk, []);
-
-  if (evEditingId) {
-    const idx = events.findIndex(e => e.id === evEditingId);
-    if (idx > -1) events[idx] = { ...events[idx], title, start, end, notes };
-  } else {
-    events.push({ id: Date.now().toString(), title, start, end, notes, repeat: 'none', color: '#374151' });
-  }
-
-  events.sort((a, b) => (a.start || '').localeCompare(b.start || ''));
-  save('events_' + dk, events);
-  closeEventModal();
-  renderToday();
-  if (currentTab === 'week') renderWeekDaySched();
-}
-
-function deleteEvent() {
-  if (!evEditingId || !evEditingDate) return;
-  if (!confirm('Delete this event?')) return;
-  const events = load('events_' + evEditingDate, []).filter(e => e.id !== evEditingId);
-  save('events_' + evEditingDate, events);
-  closeEventModal();
-  renderToday();
-  if (currentTab === 'week') renderWeekDaySched();
-}
-
-
-
-// ── RECUR FREQS ───────────────────────────────────────────────────────────
-const RECUR_FREQS = [
-  { key:'daily',     label:'Daily',     days:1   },
-  { key:'weekly',    label:'Weekly',    days:7   },
-  { key:'biweekly',  label:'Biweekly',  days:14  },
-  { key:'monthly',   label:'Monthly',   days:30  },
-  { key:'quarterly', label:'Quarterly', days:91  },
-  { key:'annually',  label:'Annually',  days:365 },
-];
-
-function advanceRecurringDate(currentDue, freqKey) {
-  const freq = RECUR_FREQS.find(f => f.key === freqKey) || RECUR_FREQS.find(f => f.key === 'weekly');
-  const base = currentDue ? new Date(currentDue + 'T00:00:00') : new Date();
-  base.setDate(base.getDate() + freq.days);
-  return localDateStr(base);
-}
-
-// ── RECURRING TASK COMPLETION ─────────────────────────────────────────────
-function completeRecurring(area, taskId) {
-  const tasks = load('tasks_' + area, []);
-  const idx = tasks.findIndex(t => String(t.id) === String(taskId));
-  if (idx === -1) return;
-  const t = tasks[idx];
-  const todayStr = dateKey(today());
-
-  // Archive the completion
-  const archived = { ...t, done: true, completedOn: todayStr };
-  if (!archived.completions) archived.completions = [];
-  archived.completions.push(todayStr);
-
-  // Create fresh copy at next due date
-  const nextDue = advanceRecurringDate(t.dueDate || todayStr, t.recurFreq || 'weekly');
-  const fresh = {
-    ...t,
-    id: Date.now(),
-    done: false,
-    added: todayStr,
-    dueDate: nextDue,
-    completions: [...(t.completions || []), todayStr],
-  };
-
-  tasks.splice(idx, 1, fresh);
-
-  // Store archived separately
-  const archive = load('archive_' + area, []);
-  archive.push(archived);
-  save('archive_' + area, archive);
-  save('tasks_' + area, tasks);
-  renderTasksList();
-}
-
-// ── SCHEDULE WITH OVERRIDES ───────────────────────────────────────────────
-function getScheduleForDate(d) {
-  const dk = dateKey(d);
-  // Check for per-day override first
-  const override = load('sched_' + dk, null);
-  if (override) {
-    try { return JSON.parse(override); } catch {}
-  }
-  // Fall back to weekday/weekend templates
-  return isWeekend(d) ? SCHED_WEEKEND : SCHED_WEEKDAY;
-}
-
-// ── RECURRING EVENTS ─────────────────────────────────────────────────────
-function getEventsForDate(dk) {
-  const specific  = load('events_' + dk, []);
-  const recurring = load('recurring_events', []);
-  const d   = new Date(dk + 'T12:00:00');
-  const dow = d.getDay();
-  const applicable = recurring.filter(ev => {
-    if (ev.repeat === 'daily') return true;
-    if (ev.repeat === 'weekly') {
-      const origin = new Date((ev.originDate || dk) + 'T12:00:00');
-      return origin.getDay() === dow;
-    }
-    if (ev.repeat === 'weekdays') return dow >= 1 && dow <= 5;
-    return false;
-  }).filter(ev => ev.originDate !== dk);
-  return [...specific, ...applicable].sort((a,b) => (a.start||'').localeCompare(b.start||''));
-}
-
-// ── LEGACY MOVES ─────────────────────────────────────────────────────────
-let _legacyDeferTaskId = null;
-
-function applyLegacyMove(taskId, moveKey) {
-  const tasks = load('tasks_legacy', []);
-  const idx = tasks.findIndex(t => String(t.id) === String(taskId));
-  if (idx === -1) return;
-
-  if (moveKey === 'defer') {
-    // Show defer date input inline
-    _legacyDeferTaskId = taskId;
-    const row = document.getElementById('defer-row-' + taskId);
-    if (row) row.classList.add('visible');
-    return;
-  }
-
-  const patch = { move: moveKey };
-  if (moveKey === 'close') patch.done = true;
-  Object.assign(tasks[idx], patch);
-  save('tasks_legacy', tasks);
-  renderTasksList();
-}
-
-function confirmDefer(taskId) {
-  const input = document.getElementById('defer-input-' + taskId);
-  if (!input || !input.value) return;
-  const tasks = load('tasks_legacy', []);
-  const idx = tasks.findIndex(t => String(t.id) === String(taskId));
-  if (idx > -1) {
-    tasks[idx].move = 'defer';
-    tasks[idx].deferUntil = input.value;
-    save('tasks_legacy', tasks);
-  }
-  renderTasksList();
-}
-
-// ── MOVE TO CONTAINER ─────────────────────────────────────────────────────
-let _moveTaskId   = null;
-let _moveFromArea = null;
-
-function openMoveToSheet(taskId, fromArea) {
-  _moveTaskId   = taskId;
-  _moveFromArea = fromArea;
-  const tasks = load('tasks_' + fromArea, []);
-  const task  = tasks.find(t => String(t.id) === String(taskId));
-  document.getElementById('move-to-task-name').textContent = task ? task.text : '';
-
-  const grid = document.getElementById('move-to-grid');
-  grid.innerHTML = AREAS
-    .filter(a => a.key !== fromArea)
-    .map(a => `
-      <button class="move-to-btn" onclick="executeMoveTo('${a.key}')"
-        style="border-color:${a.color};color:${a.color}">
-        ${a.label}
-      </button>
-    `).join('');
-
-  document.getElementById('move-to-sheet').classList.add('open');
-}
-
-function closeMoveToSheet() {
-  document.getElementById('move-to-sheet').classList.remove('open');
-  _moveTaskId = null; _moveFromArea = null;
-}
-
-function executeMoveTo(toArea) {
-  if (!_moveTaskId || !_moveFromArea) return;
-  const fromTasks = load('tasks_' + _moveFromArea, []);
-  const idx = fromTasks.findIndex(t => String(t.id) === String(_moveTaskId));
-  if (idx === -1) { closeMoveToSheet(); return; }
-
-  const task = { ...fromTasks[idx], id: Date.now(), added: new Date().toISOString() };
-  // Strip container-specific extras
-  delete task.move; delete task.moveNote; delete task.deferUntil;
-  delete task.subarea; delete task.delegateTo; delete task.urgency;
-
-  fromTasks.splice(idx, 1);
-  save('tasks_' + _moveFromArea, fromTasks);
-
-  const toTasks = load('tasks_' + toArea, []);
-  toTasks.unshift(task);
-  save('tasks_' + toArea, toTasks);
-
-  closeMoveToSheet();
-  selectTaskArea(toArea);
-}
-
 
 // ── INIT ──────────────────────────────────────────────────────────────────
   async function init() {
@@ -1995,12 +1690,17 @@ let currentTab = 'today';
 let currentTaskArea = 'creation';
 let weekOffset = load('weekOffset', 0);
 let selectedWeekDay = null;
+let viewingDk = null; // currently viewed date in Today tab (null = today)
 let captureArea = 'creation';
 
 // ── HELPERS ───────────────────────────────────────────────────────────────
 function today() { return new Date(); }
-function localDateStr(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-function dateKey(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function dateKey(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 function dayOfWeek(d) { return d.getDay(); } // 0=Sun
 function isWeekend(d) { const dow = dayOfWeek(d); return dow === 0 || dow === 6; }
 
@@ -2056,16 +1756,65 @@ function renderHeader() {
 }
 
 // ── TODAY VIEW ────────────────────────────────────────────────────────────
+
+function renderTodayDayStrip() {
+  const pillsEl = document.getElementById('today-day-pills');
+  if (!pillsEl) return;
+  const now = today();
+  if (!viewingDk) viewingDk = dateKey(now);
+
+  // Show 7 days centred on current viewingDk week (Mon–Sun)
+  const viewD = new Date(viewingDk + 'T12:00:00');
+  const dow = viewD.getDay(); // 0=Sun
+  const weekStart = new Date(viewD);
+  weekStart.setDate(viewD.getDate() - ((dow + 6) % 7)); // Mon
+
+  const days = Array.from({length:7}, (_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    return d;
+  });
+
+  const todayKey = dateKey(now);
+  pillsEl.innerHTML = days.map(d => {
+    const key = dateKey(d);
+    const isToday = key === todayKey;
+    const isSelected = key === viewingDk;
+    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    return `<div class="day-pill ${isToday?'today':''} ${isSelected?'selected':''}" onclick="selectTodayDay('${key}')">
+      <div class="day-name">${dayNames[d.getDay()]}</div>
+      <div class="day-num">${d.getDate()}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectTodayDay(key) {
+  viewingDk = key;
+  renderToday();
+}
+
+function shiftTodayWeek(dir) {
+  const base = viewingDk ? new Date(viewingDk + 'T12:00:00') : today();
+  base.setDate(base.getDate() + dir * 7);
+  viewingDk = dateKey(base);
+  renderToday();
+}
+
 function renderToday() {
   const now = today();
-  const sched = getSchedule(now);
-  const current = getCurrentBlock(sched);
+  const viewD = viewingDk ? new Date(viewingDk + 'T12:00:00') : now;
+  const isActualToday = dateKey(viewD) === dateKey(now);
+  const sched = getSchedule(viewD);
+  const current = isActualToday ? getCurrentBlock(sched) : null;
 
   // Header
-  document.getElementById('todayTitle').textContent = now.toLocaleDateString('en-US', { weekday: 'long' });
-  document.getElementById('todayDate').textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  document.getElementById('todayTitle').textContent = viewD.toLocaleDateString('en-US', { weekday: 'long' });
+  document.getElementById('todayDate').textContent = viewD.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  renderTodayDayStrip();
 
-  // Now indicator
+  // Now indicator (only when viewing actual today)
+  const nowIndicator = document.getElementById('nowIndicator');
+  if (nowIndicator) nowIndicator.style.display = isActualToday ? 'flex' : 'none';
   if (current) {
     document.getElementById('nowTitle').textContent = current.title;
     document.getElementById('nowSub').textContent = `Until ${fmtTime(current.end)} · ${current.label}`;
@@ -2076,7 +1825,7 @@ function renderToday() {
   }
 
   // Events
-  const evKey = dateKey(now);
+  const evKey = dateKey(viewD);
   const events = getEventsForDate(evKey);
   const evContainer = document.getElementById('todayEvents');
   if (events.length === 0) {
@@ -2098,7 +1847,7 @@ function renderToday() {
   renderDayFields();
 
   // Timeline
-  const nowH = now.getHours() + now.getMinutes() / 60;
+  const nowH = isActualToday ? (now.getHours() + now.getMinutes() / 60) : -1;
   const tlEl = document.getElementById('timeline');
   tlEl.innerHTML = sched.map(block => {
     const isCurrent = current && block.start === current.start;
@@ -2452,7 +2201,7 @@ function switchTab(tab) {
 
 // ── ONE ACTION / DAY NOTES / SHUTDOWN ─────────────────────────────────────
 function renderDayFields() {
-  const dk = dateKey(today());
+  const dk = viewingDk || dateKey(today());
 
   const oaEl = document.getElementById('one-action-input');
   if (oaEl) {
@@ -2577,7 +2326,7 @@ function advanceRecurringDate(currentDue, freqKey) {
   const freq = RECUR_FREQS.find(f => f.key === freqKey) || RECUR_FREQS.find(f => f.key === 'weekly');
   const base = currentDue ? new Date(currentDue + 'T00:00:00') : new Date();
   base.setDate(base.getDate() + freq.days);
-  return localDateStr(base);
+  return dateKey(base);
 }
 
 // ── RECURRING TASK COMPLETION ─────────────────────────────────────────────
@@ -2788,15 +2537,13 @@ function _showSyncMsg(elId, ok, msg) {
   el.textContent = (ok ? '✓ ' : '✕ ') + msg;
 }
 
-let _syncDeviceFlowActive = false;
-
 function openSyncModal() {
   const s = JodySync.getStatus();
-  ['sync-step-setup','sync-step-code','sync-step-connected'].forEach(id => {
+  ['sync-step-setup','sync-step-connected'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
-  ['sync-test-result','sync-code-result','sync-connected-result'].forEach(id => {
+  ['sync-test-result','sync-connected-result'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = 'none';
   });
@@ -2822,7 +2569,6 @@ function openSyncModal() {
 }
 
 function closeSyncModal() {
-  if (_syncDeviceFlowActive) syncCancelDeviceFlow();
   document.getElementById('sync-modal-overlay').classList.remove('open');
 }
 
@@ -2857,53 +2603,6 @@ async function syncConnect() {
     JodySync.clearConfig();
     _showSyncMsg('sync-test-result', false, 'Error: ' + e.message);
   }
-}
-
-async function syncStartDeviceFlow() {
-  const clientId = (document.getElementById('sync-client-id').value || '').trim();
-  const device   = (document.getElementById('sync-device').value || '').trim() || 'iOS';
-  if (!clientId) {
-    _showSyncMsg('sync-test-result', false, 'Please enter your Azure App Client ID.');
-    return;
-  }
-  JodySync.configure({ clientId, device });
-  try {
-    const flow = await JodySync.startDeviceFlow(clientId);
-    document.getElementById('sync-step-setup').style.display = 'none';
-    document.getElementById('sync-step-code').style.display = 'block';
-    const codeEl = document.getElementById('sync-device-code');
-    if (codeEl) codeEl.textContent = flow.user_code;
-    _syncDeviceFlowActive = true;
-    const result = await JodySync.pollDeviceFlow(clientId, flow.device_code, flow.interval);
-    _syncDeviceFlowActive = false;
-    if (result.ok) {
-      document.getElementById('sync-step-code').style.display = 'none';
-      document.getElementById('sync-step-connected').style.display = 'block';
-      syncUpdateStatus();
-      const pullResult = await JodySync.pull();
-      if (pullResult.applied) reloadAllViews();
-      await JodySync.push();
-      syncUpdateStatus();
-      const info = document.getElementById('sync-connected-info');
-      if (info) info.textContent = 'Connected · synced just now';
-    } else {
-      document.getElementById('sync-step-code').style.display = 'none';
-      document.getElementById('sync-step-setup').style.display = 'block';
-      _showSyncMsg('sync-test-result', false, 'Sign-in failed: ' + (result.reason || 'unknown'));
-    }
-  } catch(e) {
-    document.getElementById('sync-step-code').style.display = 'none';
-    document.getElementById('sync-step-setup').style.display = 'block';
-    _syncDeviceFlowActive = false;
-    _showSyncMsg('sync-test-result', false, 'Error: ' + e.message);
-  }
-}
-
-function syncCancelDeviceFlow() {
-  JodySync.cancelDeviceFlow();
-  _syncDeviceFlowActive = false;
-  document.getElementById('sync-step-code').style.display = 'none';
-  document.getElementById('sync-step-setup').style.display = 'block';
 }
 
 async function syncPushNow() {
