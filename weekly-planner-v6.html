@@ -3957,14 +3957,9 @@ const JodySync = (() => {
   }
 
   async function _ghGet() {
-    const { pat } = getConfig();
-    // Cache-bust via `cache: 'no-store'` (standards-compliant fetch option
-    // that bypasses browser HTTP cache without adding custom headers).
-    // We deliberately do NOT add Cache-Control or If-None-Match headers
-    // here — those aren't on GitHub's CORS Access-Control-Allow-Headers
-    // allowlist and would cause the preflight to fail.
+    const { pat, repo } = getConfig();
+    console.log(`[JodySync GET] repo=${repo} pat_len=${pat.length} pat_prefix=${pat.slice(0, 10)}…`);
     const res = await fetch(_apiUrl(), {
-      cache: 'no-store',
       headers: {
         'Authorization': `Bearer ${pat}`,
         'Accept': 'application/vnd.github+json',
@@ -3973,7 +3968,11 @@ const JodySync = (() => {
     });
     console.log(`[JodySync GET] ${_apiUrl()} → ${res.status}`);
     if (res.status === 404) {
-      console.warn('[JodySync GET] 404 — data.json not found OR PAT lost contents access. Check: 1) file exists at that path on the default branch, 2) PAT has Contents:read+write for the repo, 3) PAT not expired.');
+      let bodyHint = '';
+      try { const txt = await res.text(); bodyHint = ' — body: ' + txt.slice(0, 200); } catch {}
+      console.warn('[JodySync GET] 404 from GitHub.' + bodyHint +
+        '\nCommon causes: (1) PAT lost Contents permission on this repo, (2) PAT expired, ' +
+        '(3) repo name mismatch (check Settings → Sync), (4) data.json not on default branch.');
       return null;
     }
     if (!res.ok) {

@@ -1465,14 +1465,7 @@
 
   async function _ghGet() {
     const { pat } = getConfig();
-    // Cache-bust via a timestamp query param — changes the URL so browsers
-    // and CDN layers treat each request as a new cache key. We deliberately
-    // do NOT add Cache-Control or If-None-Match headers here because those
-    // are not on GitHub's CORS Access-Control-Allow-Headers allowlist, and
-    // adding them causes the preflight to fail and the request to be blocked.
-    const url = _apiUrl() + '?t=' + Date.now();
-    const res = await fetch(url, {
-      cache: 'no-store',
+    const res = await fetch(_apiUrl(), {
       headers: {
         'Authorization': `Bearer ${pat}`,
         'Accept': 'application/vnd.github+json',
