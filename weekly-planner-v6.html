@@ -623,13 +623,12 @@ body { background: var(--bg); font-family: 'Outfit', sans-serif; color: var(--in
 .sync-dot.unconfigured { background: rgba(255,255,255,0.2); }
 @keyframes sync-pulse { 0%,100%{opacity:0.5} 50%{opacity:1} }
 .sync-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sync-push-btn, .sync-pull-btn {
+.sync-push-btn {
   background: none; border: none; color: rgba(255,255,255,0.45);
   cursor: pointer; font-size: 12px; padding: 0 2px; transition: color 0.12s;
   flex-shrink: 0;
 }
 .sync-push-btn:hover { color: #6bffaa; }
-.sync-pull-btn:hover { color: #6bc4ff; }
 
 /* Config modal */
 .sync-modal-overlay {
@@ -720,7 +719,6 @@ body { background: var(--bg); font-family: 'Outfit', sans-serif; color: var(--in
     <div class="sync-status" id="sync-status-bar" onclick="openSyncModal()" title="GitHub sync settings">
       <div class="sync-dot unconfigured" id="sync-dot"></div>
       <div class="sync-label" id="sync-label">GitHub sync · tap to set up</div>
-      <button class="sync-pull-btn" id="sync-pull-btn" title="Pull latest" onclick="event.stopPropagation();syncPullNow()" style="display:none">↓</button>
       <button class="sync-push-btn" id="sync-push-btn" title="Push now" onclick="event.stopPropagation();syncPushNow()" style="display:none">↑</button>
     </div>
 
@@ -1023,9 +1021,7 @@ function ls_set(key, val) {
   try {
     localStorage.setItem(PREFIX + key, JSON.stringify(val));
     flashSave();
-    // Guarded against temporal dead zone — ls_set may be called during
-    // initial eval before `const JodySync` is initialized.
-    try { JodySync.schedulePush(); } catch {}
+    if (typeof JodySync !== 'undefined') JodySync.schedulePush();
   } catch(e) { console.warn('localStorage unavailable'); }
 }
 function ls_getJSON(key, def = {}) {
@@ -1038,7 +1034,7 @@ function ls_setJSON(key, val) {
   try {
     localStorage.setItem(PREFIX + key, JSON.stringify(val));
     flashSave();
-    try { JodySync.schedulePush(); } catch {}
+    if (typeof JodySync !== 'undefined') JodySync.schedulePush();
   } catch(e) {}
 }
 
@@ -1063,46 +1059,6 @@ function checkStorage() {
 }
 
 // ══════════════════════════════════════════════════════
-// STORAGE MIGRATION
-// ══════════════════════════════════════════════════════
-// Normalize legacy/cross-app formats. Runs once per page load; idempotent.
-//
-// History: ls_set went through a refactor from `localStorage.setItem(k, val)`
-// (raw) to `localStorage.setItem(k, JSON.stringify(val))`. Data written by
-// the old v6 survives in data.json as unquoted raw strings like 'yes', 'no',
-// 'day'. iOS's load() uses JSON.parse which throws on those, so the data is
-// silently lost cross-app.
-//
-// Strategy: for each jos_ key, if the value fails JSON.parse, re-store it as
-// JSON.stringify(value). Values that parse successfully are left alone.
-function migrateStorage() {
-  if (ls_get('migration_v1', false) === true) return;
-  let fixed = 0;
-  try {
-    const keys = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith(PREFIX) && !k.startsWith(PREFIX + 'sync_') && k !== PREFIX + 'migration_v1') {
-        keys.push(k);
-      }
-    }
-    keys.forEach(k => {
-      const raw = localStorage.getItem(k);
-      if (raw === null) return;
-      try { JSON.parse(raw); } catch {
-        // raw string that isn't valid JSON — re-store as quoted JSON
-        localStorage.setItem(k, JSON.stringify(raw));
-        fixed++;
-      }
-    });
-  } catch(e) { console.warn('[migrate] failed:', e); }
-  ls_set('migration_v1', true);
-  if (fixed > 0) {
-    console.log(`[JodyOS] Migrated ${fixed} legacy storage values`);
-  }
-}
-
-// ══════════════════════════════════════════════════════
 // EXPORT / IMPORT / CLEAR
 // ══════════════════════════════════════════════════════
 function exportData() {
@@ -1116,7 +1072,7 @@ function exportData() {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'jody-os-backup-' + dateKey(new Date()) + '.json';
+  a.download = 'jody-os-backup-' + new Date().toISOString().slice(0,10) + '.json';
   a.click();
 }
 
@@ -1263,12 +1219,7 @@ function getWeekDates() {
 }
 function fmt(d) { return d.toLocaleDateString('en-CA', {month:'short',day:'numeric'}); }
 function isToday(d) { const n=new Date(); return d.getDate()===n.getDate()&&d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear(); }
-function dateKey(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
+function dateKey(d) { return d.toISOString().slice(0,10); }
 
 // ══════════════════════════════════════════════════════
 // RENDER
@@ -1580,7 +1531,7 @@ function refreshPanelCount(container) {
   const panel = document.querySelector(`.task-panel[data-container="${container}"]`);
   if (!panel) return;
   const tasks = getTasks(container);
-  const today = dateKey(new Date());
+  const today = new Date().toISOString().slice(0,10);
   const visible = container === 'legacy' ? tasks.filter(t => !t.deferUntil || t.deferUntil <= today) : tasks;
   const pending = visible.filter(t => !t.done).length;
   const deferred = container === 'legacy' ? tasks.filter(t => t.deferUntil && t.deferUntil > today).length : 0;
@@ -1674,7 +1625,7 @@ function renderTaskPanels() {
   wrap.innerHTML = '';
   ALL_CONTAINERS.forEach(c => {
     const tasks = getTasks(c.type);
-    const today = dateKey(new Date());
+    const today = new Date().toISOString().slice(0,10);
     const visibleTasks = c.type === 'legacy'
       ? tasks.filter(t => !t.deferUntil || t.deferUntil <= today)
       : tasks;
@@ -1782,7 +1733,7 @@ function makeAdminItem(t, c) {
     txtRow.appendChild(badge);
   }
   if (t.dueDate) {
-    const today = dateKey(new Date());
+    const today = new Date().toISOString().slice(0,10);
     const overdue = t.dueDate < today;
     const due = document.createElement('span');
     due.style.cssText = `font-size:9px;font-family:"DM Mono",monospace;color:${overdue ? '#c0392b' : 'var(--muted)'};font-weight:${overdue ? '600' : '400'};`;
@@ -1797,7 +1748,7 @@ function makeAdminItem(t, c) {
 
 // ── LEGACY body ──
 function renderLegacyBody(body, tasks, c) {
-  const today = dateKey(new Date());
+  const today = new Date().toISOString().slice(0,10);
   const active   = tasks.filter(t => !t.deferUntil || t.deferUntil <= today);
   const deferred = tasks.filter(t => t.deferUntil && t.deferUntil > today);
 
@@ -1935,7 +1886,7 @@ function openLegacyMoveModal(taskId, moveKey) {
       <div style="font-size:12px;color:var(--muted);margin-bottom:12px;font-style:italic">${mv.hint}</div>
       <div style="font-size:11px;font-weight:700;margin-bottom:5px;color:var(--ink)">${noteLabel}</div>
       ${moveKey === 'defer'
-        ? `<input id="lm-note" type="date" min="${dateKey(new Date())}" value="${t.deferUntil||''}" style="background:rgba(26,23,20,0.03);border:1px solid rgba(26,23,20,0.1);border-radius:6px;padding:8px 10px;font-size:13px;color:var(--ink);width:100%;">`
+        ? `<input id="lm-note" type="date" min="${new Date().toISOString().slice(0,10)}" value="${t.deferUntil||''}" style="background:rgba(26,23,20,0.03);border:1px solid rgba(26,23,20,0.1);border-radius:6px;padding:8px 10px;font-size:13px;color:var(--ink);width:100%;">`
         : `<textarea id="lm-note" style="width:100%;background:rgba(26,23,20,0.03);border:1px solid rgba(26,23,20,0.1);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--ink);resize:none;min-height:56px;font-family:'Outfit',sans-serif;line-height:1.5" placeholder="Optional — add context…">${t.moveNote||''}</textarea>`
       }
       <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
@@ -2677,7 +2628,7 @@ function advanceRecurringDate(currentDue, freqKey) {
   const freq = RECUR_FREQS.find(f => f.key === freqKey) || RECUR_FREQS.find(f => f.key === 'weekly');
   const base = currentDue ? new Date(currentDue + 'T00:00:00') : new Date();
   base.setDate(base.getDate() + freq.days);
-  return dateKey(base);
+  return base.toISOString().slice(0, 10);
 }
 
 function completeRecurring(container, taskId) {
@@ -2685,7 +2636,7 @@ function completeRecurring(container, taskId) {
   const idx = tasks.findIndex(t => String(t.id) === String(taskId));
   if (idx === -1) return;
   const t = tasks[idx];
-  const today = dateKey(new Date());
+  const today = new Date().toISOString().slice(0, 10);
 
   // Archive: mark done, record completion date
   const archived = { ...t, done: true, completedOn: today };
@@ -3219,18 +3170,48 @@ function setView(v) {
   if (v==='day')    renderDayView(wk);
   if (v==='week')   renderWeekView(wk);
   if (v==='review') renderReview(wk);
-
-  // Pull on view switch — silently update if remote is newer (matches iOS).
-  // Wrapped in try/catch because setView runs at initial render, which is
-  // BEFORE `const JodySync` is initialized — accessing it via `typeof` would
-  // throw ReferenceError in the temporal dead zone.
-  try {
-    JodySync.pull().then(r => {
-      if (r && r.applied) reloadAllViews();
-    });
-  } catch {}
 }
 
+// ══════════════════════════════════════════════════════
+// QUICK-ADD MODAL
+// ══════════════════════════════════════════════════════
+let modalSelectedContainer = 'creation';
+
+function openModal(preselect) {
+  modalSelectedContainer = preselect || 'creation';
+  document.getElementById('modal-task-input').value = '';
+  document.getElementById('modal-saved-badge').style.display = 'none';
+  renderModalContainers();
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('modal-task-input').focus(), 100);
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+function renderModalContainers() {
+  const el = document.getElementById('modal-containers');
+  el.innerHTML = '';
+  ALL_CONTAINERS.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'modal-cont-btn' + (modalSelectedContainer===c.type?' selected':'');
+    btn.style.cssText = `border-color:${c.dot};color:${modalSelectedContainer===c.type?'white':c.dot};background:${modalSelectedContainer===c.type?c.dot:'transparent'};`;
+    btn.textContent = c.name;
+    btn.onclick = () => { modalSelectedContainer=c.type; renderModalContainers(); };
+    el.appendChild(btn);
+  });
+}
+function saveModalTask() {
+  const text = document.getElementById('modal-task-input').value.trim();
+  if (!text) return;
+  addTask(modalSelectedContainer, text);
+  const c = ALL_CONTAINERS.find(c=>c.type===modalSelectedContainer);
+  const badge = document.getElementById('modal-saved-badge');
+  document.getElementById('modal-saved-to').textContent = c ? c.name : modalSelectedContainer;
+  badge.style.display = 'flex';
+  document.getElementById('modal-task-input').value = '';
+  document.getElementById('modal-task-input').focus();
+  setTimeout(() => { badge.style.display='none'; }, 2000);
+}
 // ══════════════════════════════════════════════════════
 // EVENTS — user-added schedule items
 // Storage: jos_events_{dateKey} → array of event objects
@@ -3409,100 +3390,23 @@ function saveEvent() {
 }
 
 // ── Render user events on timeline ───────────────────
-//
-// Handles overlap: events that occupy the same time window are split into
-// side-by-side columns so none is hidden behind another.
-//
-// Algorithm: sort by start time, assign each event the lowest-index column
-// whose current trailing event has already ended. Then group events into
-// "clusters" of mutual overlap and render each at 1/clusterWidth of the
-// layer, offset by its column index.
 function renderUserEvents(dk) {
   const layer = document.getElementById('blocks-layer');
-  const rawEvents = getEventsForDate(dk);
-
-  // Resolve time windows and clamp to visible range
-  const events = [];
-  rawEvents.forEach(ev => {
+  const events = getEventsForDate(dk);
+  events.forEach(ev => {
     const [sh, sm] = ev.start.split(':').map(Number);
     const [eh, em] = ev.end.split(':').map(Number);
     const startH = sh + sm / 60;
     const endH   = eh + em / 60;
     if (endH <= START_HOUR || startH >= END_HOUR) return;
-    events.push({
-      ev,
-      startH,
-      endH,
-      clampedStart: Math.max(startH, START_HOUR),
-      clampedEnd:   Math.min(endH, END_HOUR),
-    });
-  });
-
-  // Sort by start, then by longer-first (so longer events get column 0)
-  events.sort((a, b) =>
-    a.startH - b.startH || (b.endH - b.startH) - (a.endH - a.startH)
-  );
-
-  // Column assignment: for each event, find the first column whose current
-  // event has already ended (<= this event's start). If none, open a new one.
-  const columnEnds = []; // columnEnds[i] = endH of last event placed in column i
-  events.forEach(item => {
-    let col = columnEnds.findIndex(end => end <= item.startH);
-    if (col === -1) { col = columnEnds.length; columnEnds.push(item.endH); }
-    else columnEnds[col] = item.endH;
-    item.col = col;
-  });
-
-  // Cluster events by mutual overlap so each cluster can have a different width.
-  // Two events are in the same cluster if they overlap directly OR transitively
-  // via shared overlap.
-  const n = events.length;
-  const clusterId = new Array(n).fill(-1);
-  let nextId = 0;
-  for (let i = 0; i < n; i++) {
-    if (clusterId[i] !== -1) continue;
-    // BFS from i
-    const queue = [i];
-    clusterId[i] = nextId;
-    while (queue.length) {
-      const k = queue.shift();
-      for (let j = 0; j < n; j++) {
-        if (clusterId[j] !== -1) continue;
-        if (events[k].startH < events[j].endH && events[j].startH < events[k].endH) {
-          clusterId[j] = nextId;
-          queue.push(j);
-        }
-      }
-    }
-    nextId++;
-  }
-  // Width per cluster = 1 + max column index in that cluster
-  const clusterWidth = new Array(nextId).fill(0);
-  events.forEach((item, i) => {
-    const cid = clusterId[i];
-    if (item.col + 1 > clusterWidth[cid]) clusterWidth[cid] = item.col + 1;
-  });
-
-  events.forEach((item, i) => {
-    const { ev, clampedStart, clampedEnd, col } = item;
-    const cols = clusterWidth[clusterId[i]] || 1;
-
+    const clampedStart = Math.max(startH, START_HOUR);
+    const clampedEnd   = Math.min(endH, END_HOUR);
     const top    = (clampedStart - START_HOUR) * HOUR_HEIGHT;
     const height = Math.max((clampedEnd - clampedStart) * HOUR_HEIGHT - 2, 22);
 
     const el = document.createElement('div');
     el.className = 'time-block user-event';
-
-    // Position as percentage so side-by-side columns split the available width.
-    // Leave the base 6px inset on outer edges (via left/right in CSS) by using
-    // inner offsets computed in %.
-    const widthPct = 100 / cols;
-    const leftPct  = col * widthPct;
-    el.style.cssText =
-      `top:${top}px;height:${height}px;` +
-      `left:calc(6px + ${leftPct}% * ${(cols > 1 ? '0.97' : '1')});` +
-      `right:calc(6px + ${(100 - leftPct - widthPct)}% * ${(cols > 1 ? '0.97' : '1')});` +
-      `border-left-color:${ev.color};`;
+    el.style.cssText = `top:${top}px;height:${height}px;border-left-color:${ev.color};`;
     el.style.color = ev.color;
 
     const repeatBadge = ev.repeat && ev.repeat !== 'none'
@@ -3512,7 +3416,7 @@ function renderUserEvents(dk) {
     el.innerHTML = `
       <div class="block-label" style="color:${ev.color}">${fmt12(ev.start)}–${fmt12(ev.end)}${repeatBadge}</div>
       <div class="block-title" style="color:${ev.color};font-weight:600">${ev.title}</div>
-      ${ev.notes && cols === 1 ? `<div class="block-sub" style="color:${ev.color}">${ev.notes}</div>` : ''}
+      ${ev.notes ? `<div class="block-sub" style="color:${ev.color}">${ev.notes}</div>` : ''}
       <button class="event-delete-btn" style="color:${ev.color}" title="Edit / Delete" onclick="handleEventClick(event,'${ev.id}','${dk}')">✎</button>
     `;
     layer.appendChild(el);
@@ -3957,38 +3861,23 @@ const JodySync = (() => {
   }
 
   async function _ghGet() {
-    const { pat, repo } = getConfig();
-    console.log(`[JodySync GET] repo=${repo} pat_len=${pat.length} pat_prefix=${pat.slice(0, 10)}…`);
-    // Cache-bust: a unique URL per call (different cache key) plus
-    // cache: 'no-store' to fully bypass the browser's HTTP cache.
-    // GitHub's Contents API ignores unknown query params, so ?_=N is safe.
-    const url = _apiUrl() + '?_=' + Date.now();
-    const res = await fetch(url, {
-      cache: 'no-store',
+    const { pat } = getConfig();
+    const res = await fetch(_apiUrl(), {
       headers: {
         'Authorization': `Bearer ${pat}`,
         'Accept': 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
       }
     });
-    console.log(`[JodySync GET] ${url} → ${res.status}`);
-    if (res.status === 404) {
-      let bodyHint = '';
-      try { const txt = await res.text(); bodyHint = ' — body: ' + txt.slice(0, 200); } catch {}
-      console.warn('[JodySync GET] 404 from GitHub.' + bodyHint +
-        '\nCommon causes: (1) PAT lost Contents permission on this repo, (2) PAT expired, ' +
-        '(3) repo name mismatch (check Settings → Sync), (4) data.json not on default branch.');
-      return null;
-    }
+    if (res.status === 404) return null;
     if (!res.ok) {
       const txt = await res.text();
       throw new Error(`GitHub GET ${res.status}: ${txt}`);
     }
     const j = await res.json();
     cfgSet('sha', j.sha);
-    // Content is base64 encoded. Strip BOTH \r and \n (GitHub wraps the
-    // base64 string with line breaks that can include \r on some platforms).
-    const decoded = atob(j.content.replace(/[\r\n]/g, ''));
+    // Content is base64 encoded
+    const decoded = atob(j.content.replace(/\n/g, ''));
     return decoded;
   }
 
@@ -4057,20 +3946,6 @@ const JodySync = (() => {
   }
 
   // ── PULL ──────────────────────────────────────────────────────────────────
-  //
-  // Uses GitHub's content sha as the change marker, not timestamps. Every
-  // PUT to data.json yields a new sha — the server computes it from file
-  // contents. Comparing sha values is immune to clock skew between devices.
-  //
-  // Track two sha values:
-  //   sha         — most recent sha observed (updated by BOTH get and put)
-  //   applied_sha — sha of the last snapshot actually applied to localStorage
-  //
-  // A pull applies when `remoteSha !== applied_sha`. This correctly handles:
-  //   • First pull ever (applied_sha is empty)
-  //   • Another device pushed (remoteSha changed)
-  //   • We pushed (remoteSha changed, but we also set applied_sha so the
-  //     next pull correctly skips as "we already have this")
   async function pull() {
     if (!isConfigured()) return { ok: false, reason: 'not_configured' };
     try {
@@ -4079,20 +3954,14 @@ const JodySync = (() => {
 
       const remote     = JSON.parse(raw);
       const remoteMeta = remote[META_KEY] || {};
-      const remoteSha  = cfgGet('sha');          // updated by _ghGet just now
-      const appliedSha = cfgGet('applied_sha');
+      const remoteTime = remoteMeta.updated ? new Date(remoteMeta.updated).getTime() : 0;
+      const lastTime   = cfgGet('last') ? new Date(cfgGet('last')).getTime() : 0;
 
-      console.log(`[JodySync pull] remote=${remoteMeta.updated} (${remoteMeta.device}) remoteSha=${remoteSha.slice(0,7)} appliedSha=${appliedSha.slice(0,7) || '(none)'}`);
-
-      if (remoteSha && remoteSha === appliedSha) {
-        return { ok: true, skipped: true };
-      }
+      if (remoteTime <= lastTime) return { ok: true, skipped: true };
 
       _apply(remote);
-      cfgSet('applied_sha', remoteSha);
       cfgSet('last', remoteMeta.updated || new Date().toISOString());
       _notify();
-      console.log(`[JodySync pull] applied ${Object.keys(remote).length} keys from ${remoteMeta.device}`);
       return { ok: true, applied: true, device: remoteMeta.device };
 
     } catch (e) {
@@ -4114,9 +3983,6 @@ const JodySync = (() => {
       const snapshot = _snapshot();
       snapshot[META_KEY] = { updated: now, device: cfgGet('device', _defaultDevice()), version: DATA_VERSION };
       await _ghPut(JSON.stringify(snapshot, null, 2));
-      // _ghPut already stored the new sha via cfgSet('sha', ...). Mark that
-      // same sha as "applied" so the next pull correctly skips our own data.
-      cfgSet('applied_sha', cfgGet('sha'));
       cfgSet('last', now);
       _pushing = false;
       _notify();
@@ -4136,19 +4002,6 @@ const JodySync = (() => {
     _pushTimer = setTimeout(() => push(), PUSH_DEBOUNCE);
   }
 
-  // Force any pending debounced push to fire NOW (fire-and-forget).
-  // Call on visibilitychange → hidden / pagehide / beforeunload so writes
-  // don't get lost when the user switches apps or closes the tab with a
-  // pending debounced push timer still waiting.
-  function flushPush() {
-    if (!isConfigured()) return;
-    if (_pushTimer) {
-      clearTimeout(_pushTimer);
-      _pushTimer = null;
-      push();
-    }
-  }
-
   // ── CONFIG ────────────────────────────────────────────────────────────────
   function configure({ pat, repo, device } = {}) {
     if (pat)    cfgSet('pat',    pat.trim());
@@ -4158,7 +4011,7 @@ const JodySync = (() => {
   }
 
   function clearConfig() {
-    ['pat','repo','device','last','sha','applied_sha'].forEach(k => cfgDel(k));
+    ['pat','repo','device','last','sha'].forEach(k => cfgDel(k));
     _notify();
   }
 
@@ -4168,32 +4021,29 @@ const JodySync = (() => {
     return pull();
   }
 
-  return { init, pull, push, schedulePush, flushPush, configure, clearConfig, getStatus, onStatusChange, _snapshot };
+  return { init, pull, push, schedulePush, configure, clearConfig, getStatus, onStatusChange, _snapshot };
 })();
 
 // ══════════════════════════════════════════════════════
 // SYNC UI CONTROLLER
 // ══════════════════════════════════════════════════════
 function syncUpdateStatusBar() {
-  const s    = JodySync.getStatus();
-  const dot  = document.getElementById('sync-dot');
-  const lbl  = document.getElementById('sync-label');
-  const pushBtn = document.getElementById('sync-push-btn');
-  const pullBtn = document.getElementById('sync-pull-btn');
+  const s   = JodySync.getStatus();
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  const btn = document.getElementById('sync-push-btn');
   if (!dot || !lbl) return;
 
   if (!s.configured) {
     dot.className = 'sync-dot unconfigured';
     lbl.textContent = 'GitHub sync · tap to set up';
-    if (pushBtn) pushBtn.style.display = 'none';
-    if (pullBtn) pullBtn.style.display = 'none';
+    if (btn) btn.style.display = 'none';
     return;
   }
   if (s.pushing) {
     dot.className = 'sync-dot syncing';
     lbl.textContent = 'Syncing to GitHub…';
-    if (pushBtn) pushBtn.style.display = 'none';
-    if (pullBtn) pullBtn.style.display = 'none';
+    if (btn) btn.style.display = 'none';
     return;
   }
   dot.className = 'sync-dot connected';
@@ -4208,49 +4058,13 @@ function syncUpdateStatusBar() {
   } else {
     lbl.textContent = 'GitHub sync · never synced';
   }
-  if (pushBtn) pushBtn.style.display = 'block';
-  if (pullBtn) pullBtn.style.display = 'block';
+  if (btn) btn.style.display = 'block';
 }
 
 async function syncPushNow() {
   const result = await JodySync.push();
   syncUpdateStatusBar();
   if (!result.ok) _showSyncMsg('sync-test-result', false, 'Push failed: ' + result.reason);
-}
-
-async function syncPullNow() {
-  // Brief visual feedback — set label so user sees the action took effect
-  const lbl = document.getElementById('sync-label');
-  const priorLabel = lbl ? lbl.textContent : '';
-  if (lbl) lbl.textContent = 'Pulling…';
-
-  const result = await JodySync.pull();
-
-  if (!result.ok) {
-    if (lbl) lbl.textContent = priorLabel;
-    _showSyncMsg('sync-test-result', false, 'Pull failed: ' + result.reason);
-    syncUpdateStatusBar();
-    return;
-  }
-  if (result.applied) {
-    reloadAllViews();
-    if (lbl) lbl.textContent = '↓ ' + (result.device || 'remote') + ' · just now';
-  } else if (result.skipped) {
-    if (lbl) lbl.textContent = '✓ already up to date';
-  } else if (result.empty) {
-    if (lbl) lbl.textContent = '(remote is empty)';
-  }
-  // After a short delay let the status bar resume normal rendering
-  setTimeout(syncUpdateStatusBar, 1500);
-}
-
-// Reload views without clobbering any input the user is actively editing
-function reloadAllViews() {
-  const active = document.activeElement;
-  const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
-  if (isTyping) return;
-  render();
-  if (typeof renderTaskPanels === 'function') renderTaskPanels();
 }
 
 function _showSyncMsg(elId, ok, msg) {
@@ -4345,46 +4159,10 @@ JodySync.onStatusChange(syncUpdateStatusBar);
 (async () => {
   syncUpdateStatusBar();
   const result = await JodySync.init();
-  // Migration runs after pull so it normalizes whatever came from GitHub.
-  // If it fixed anything, push the cleaned-up state back so other devices
-  // get the migrated values.
-  migrateStorage();
   if (result && result.applied) { render(); renderTaskPanels(); }
   syncUpdateStatusBar();
   setInterval(syncUpdateStatusBar, 60000);
 })();
-
-// Background pull every 5 minutes while app is open (matches iOS behaviour)
-setInterval(async () => {
-  if (typeof JodySync === 'undefined') return;
-  const r = await JodySync.pull();
-  if (r && r.applied) {
-    reloadAllViews();
-    syncUpdateStatusBar();
-  }
-}, 5 * 60 * 1000);
-
-// Flush any pending debounced push when the page is going away. Without
-// this, a write made 2 seconds before closing the tab or switching windows
-// would be lost — the push timer never fires.
-function _flushSyncBeforeExit() {
-  try { JodySync.flushPush(); } catch {}
-}
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') {
-    _flushSyncBeforeExit();
-  } else if (document.visibilityState === 'visible') {
-    // Returning to foreground — pull remote changes in case another device
-    // pushed while we were hidden.
-    try {
-      JodySync.pull().then(r => {
-        if (r && r.applied) { reloadAllViews(); syncUpdateStatusBar(); }
-      });
-    } catch {}
-  }
-});
-window.addEventListener('pagehide', _flushSyncBeforeExit);
-window.addEventListener('beforeunload', _flushSyncBeforeExit);
 
 </script>
 </body>
