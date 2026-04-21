@@ -623,12 +623,13 @@ body { background: var(--bg); font-family: 'Outfit', sans-serif; color: var(--in
 .sync-dot.unconfigured { background: rgba(255,255,255,0.2); }
 @keyframes sync-pulse { 0%,100%{opacity:0.5} 50%{opacity:1} }
 .sync-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sync-push-btn {
+.sync-push-btn, .sync-pull-btn {
   background: none; border: none; color: rgba(255,255,255,0.45);
   cursor: pointer; font-size: 12px; padding: 0 2px; transition: color 0.12s;
   flex-shrink: 0;
 }
 .sync-push-btn:hover { color: #6bffaa; }
+.sync-pull-btn:hover { color: #6bc4ff; }
 
 /* Config modal */
 .sync-modal-overlay {
@@ -719,6 +720,7 @@ body { background: var(--bg); font-family: 'Outfit', sans-serif; color: var(--in
     <div class="sync-status" id="sync-status-bar" onclick="openSyncModal()" title="GitHub sync settings">
       <div class="sync-dot unconfigured" id="sync-dot"></div>
       <div class="sync-label" id="sync-label">GitHub sync · tap to set up</div>
+      <button class="sync-pull-btn" id="sync-pull-btn" title="Pull latest" onclick="event.stopPropagation();syncPullNow()" style="display:none">↓</button>
       <button class="sync-push-btn" id="sync-push-btn" title="Push now" onclick="event.stopPropagation();syncPushNow()" style="display:none">↑</button>
     </div>
 
@@ -1055,6 +1057,46 @@ function checkStorage() {
     return true;
   } catch(e) {
     return false;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// STORAGE MIGRATION
+// ══════════════════════════════════════════════════════
+// Normalize legacy/cross-app formats. Runs once per page load; idempotent.
+//
+// History: ls_set went through a refactor from `localStorage.setItem(k, val)`
+// (raw) to `localStorage.setItem(k, JSON.stringify(val))`. Data written by
+// the old v6 survives in data.json as unquoted raw strings like 'yes', 'no',
+// 'day'. iOS's load() uses JSON.parse which throws on those, so the data is
+// silently lost cross-app.
+//
+// Strategy: for each jos_ key, if the value fails JSON.parse, re-store it as
+// JSON.stringify(value). Values that parse successfully are left alone.
+function migrateStorage() {
+  if (ls_get('migration_v1', false) === true) return;
+  let fixed = 0;
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(PREFIX) && !k.startsWith(PREFIX + 'sync_') && k !== PREFIX + 'migration_v1') {
+        keys.push(k);
+      }
+    }
+    keys.forEach(k => {
+      const raw = localStorage.getItem(k);
+      if (raw === null) return;
+      try { JSON.parse(raw); } catch {
+        // raw string that isn't valid JSON — re-store as quoted JSON
+        localStorage.setItem(k, JSON.stringify(raw));
+        fixed++;
+      }
+    });
+  } catch(e) { console.warn('[migrate] failed:', e); }
+  ls_set('migration_v1', true);
+  if (fixed > 0) {
+    console.log(`[JodyOS] Migrated ${fixed} legacy storage values`);
   }
 }
 
@@ -3175,6 +3217,13 @@ function setView(v) {
   if (v==='day')    renderDayView(wk);
   if (v==='week')   renderWeekView(wk);
   if (v==='review') renderReview(wk);
+
+  // Pull on view switch — silently update if remote is newer (matches iOS)
+  if (typeof JodySync !== 'undefined') {
+    JodySync.pull().then(r => {
+      if (r && r.applied) reloadAllViews();
+    });
+  }
 }
 
 // ══════════════════════════════════════════════════════
@@ -3355,23 +3404,100 @@ function saveEvent() {
 }
 
 // ── Render user events on timeline ───────────────────
+//
+// Handles overlap: events that occupy the same time window are split into
+// side-by-side columns so none is hidden behind another.
+//
+// Algorithm: sort by start time, assign each event the lowest-index column
+// whose current trailing event has already ended. Then group events into
+// "clusters" of mutual overlap and render each at 1/clusterWidth of the
+// layer, offset by its column index.
 function renderUserEvents(dk) {
   const layer = document.getElementById('blocks-layer');
-  const events = getEventsForDate(dk);
-  events.forEach(ev => {
+  const rawEvents = getEventsForDate(dk);
+
+  // Resolve time windows and clamp to visible range
+  const events = [];
+  rawEvents.forEach(ev => {
     const [sh, sm] = ev.start.split(':').map(Number);
     const [eh, em] = ev.end.split(':').map(Number);
     const startH = sh + sm / 60;
     const endH   = eh + em / 60;
     if (endH <= START_HOUR || startH >= END_HOUR) return;
-    const clampedStart = Math.max(startH, START_HOUR);
-    const clampedEnd   = Math.min(endH, END_HOUR);
+    events.push({
+      ev,
+      startH,
+      endH,
+      clampedStart: Math.max(startH, START_HOUR),
+      clampedEnd:   Math.min(endH, END_HOUR),
+    });
+  });
+
+  // Sort by start, then by longer-first (so longer events get column 0)
+  events.sort((a, b) =>
+    a.startH - b.startH || (b.endH - b.startH) - (a.endH - a.startH)
+  );
+
+  // Column assignment: for each event, find the first column whose current
+  // event has already ended (<= this event's start). If none, open a new one.
+  const columnEnds = []; // columnEnds[i] = endH of last event placed in column i
+  events.forEach(item => {
+    let col = columnEnds.findIndex(end => end <= item.startH);
+    if (col === -1) { col = columnEnds.length; columnEnds.push(item.endH); }
+    else columnEnds[col] = item.endH;
+    item.col = col;
+  });
+
+  // Cluster events by mutual overlap so each cluster can have a different width.
+  // Two events are in the same cluster if they overlap directly OR transitively
+  // via shared overlap.
+  const n = events.length;
+  const clusterId = new Array(n).fill(-1);
+  let nextId = 0;
+  for (let i = 0; i < n; i++) {
+    if (clusterId[i] !== -1) continue;
+    // BFS from i
+    const queue = [i];
+    clusterId[i] = nextId;
+    while (queue.length) {
+      const k = queue.shift();
+      for (let j = 0; j < n; j++) {
+        if (clusterId[j] !== -1) continue;
+        if (events[k].startH < events[j].endH && events[j].startH < events[k].endH) {
+          clusterId[j] = nextId;
+          queue.push(j);
+        }
+      }
+    }
+    nextId++;
+  }
+  // Width per cluster = 1 + max column index in that cluster
+  const clusterWidth = new Array(nextId).fill(0);
+  events.forEach((item, i) => {
+    const cid = clusterId[i];
+    if (item.col + 1 > clusterWidth[cid]) clusterWidth[cid] = item.col + 1;
+  });
+
+  events.forEach((item, i) => {
+    const { ev, clampedStart, clampedEnd, col } = item;
+    const cols = clusterWidth[clusterId[i]] || 1;
+
     const top    = (clampedStart - START_HOUR) * HOUR_HEIGHT;
     const height = Math.max((clampedEnd - clampedStart) * HOUR_HEIGHT - 2, 22);
 
     const el = document.createElement('div');
     el.className = 'time-block user-event';
-    el.style.cssText = `top:${top}px;height:${height}px;border-left-color:${ev.color};`;
+
+    // Position as percentage so side-by-side columns split the available width.
+    // Leave the base 6px inset on outer edges (via left/right in CSS) by using
+    // inner offsets computed in %.
+    const widthPct = 100 / cols;
+    const leftPct  = col * widthPct;
+    el.style.cssText =
+      `top:${top}px;height:${height}px;` +
+      `left:calc(6px + ${leftPct}% * ${(cols > 1 ? '0.97' : '1')});` +
+      `right:calc(6px + ${(100 - leftPct - widthPct)}% * ${(cols > 1 ? '0.97' : '1')});` +
+      `border-left-color:${ev.color};`;
     el.style.color = ev.color;
 
     const repeatBadge = ev.repeat && ev.repeat !== 'none'
@@ -3381,7 +3507,7 @@ function renderUserEvents(dk) {
     el.innerHTML = `
       <div class="block-label" style="color:${ev.color}">${fmt12(ev.start)}–${fmt12(ev.end)}${repeatBadge}</div>
       <div class="block-title" style="color:${ev.color};font-weight:600">${ev.title}</div>
-      ${ev.notes ? `<div class="block-sub" style="color:${ev.color}">${ev.notes}</div>` : ''}
+      ${ev.notes && cols === 1 ? `<div class="block-sub" style="color:${ev.color}">${ev.notes}</div>` : ''}
       <button class="event-delete-btn" style="color:${ev.color}" title="Edit / Delete" onclick="handleEventClick(event,'${ev.id}','${dk}')">✎</button>
     `;
     layer.appendChild(el);
@@ -3993,22 +4119,25 @@ const JodySync = (() => {
 // SYNC UI CONTROLLER
 // ══════════════════════════════════════════════════════
 function syncUpdateStatusBar() {
-  const s   = JodySync.getStatus();
-  const dot = document.getElementById('sync-dot');
-  const lbl = document.getElementById('sync-label');
-  const btn = document.getElementById('sync-push-btn');
+  const s    = JodySync.getStatus();
+  const dot  = document.getElementById('sync-dot');
+  const lbl  = document.getElementById('sync-label');
+  const pushBtn = document.getElementById('sync-push-btn');
+  const pullBtn = document.getElementById('sync-pull-btn');
   if (!dot || !lbl) return;
 
   if (!s.configured) {
     dot.className = 'sync-dot unconfigured';
     lbl.textContent = 'GitHub sync · tap to set up';
-    if (btn) btn.style.display = 'none';
+    if (pushBtn) pushBtn.style.display = 'none';
+    if (pullBtn) pullBtn.style.display = 'none';
     return;
   }
   if (s.pushing) {
     dot.className = 'sync-dot syncing';
     lbl.textContent = 'Syncing to GitHub…';
-    if (btn) btn.style.display = 'none';
+    if (pushBtn) pushBtn.style.display = 'none';
+    if (pullBtn) pullBtn.style.display = 'none';
     return;
   }
   dot.className = 'sync-dot connected';
@@ -4023,13 +4152,33 @@ function syncUpdateStatusBar() {
   } else {
     lbl.textContent = 'GitHub sync · never synced';
   }
-  if (btn) btn.style.display = 'block';
+  if (pushBtn) pushBtn.style.display = 'block';
+  if (pullBtn) pullBtn.style.display = 'block';
 }
 
 async function syncPushNow() {
   const result = await JodySync.push();
   syncUpdateStatusBar();
   if (!result.ok) _showSyncMsg('sync-test-result', false, 'Push failed: ' + result.reason);
+}
+
+async function syncPullNow() {
+  const result = await JodySync.pull();
+  syncUpdateStatusBar();
+  if (!result.ok) {
+    _showSyncMsg('sync-test-result', false, 'Pull failed: ' + result.reason);
+  } else if (result.applied) {
+    reloadAllViews();
+  }
+}
+
+// Reload views without clobbering any input the user is actively editing
+function reloadAllViews() {
+  const active = document.activeElement;
+  const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+  if (isTyping) return;
+  render();
+  if (typeof renderTaskPanels === 'function') renderTaskPanels();
 }
 
 function _showSyncMsg(elId, ok, msg) {
@@ -4124,10 +4273,24 @@ JodySync.onStatusChange(syncUpdateStatusBar);
 (async () => {
   syncUpdateStatusBar();
   const result = await JodySync.init();
+  // Migration runs after pull so it normalizes whatever came from GitHub.
+  // If it fixed anything, push the cleaned-up state back so other devices
+  // get the migrated values.
+  migrateStorage();
   if (result && result.applied) { render(); renderTaskPanels(); }
   syncUpdateStatusBar();
   setInterval(syncUpdateStatusBar, 60000);
 })();
+
+// Background pull every 5 minutes while app is open (matches iOS behaviour)
+setInterval(async () => {
+  if (typeof JodySync === 'undefined') return;
+  const r = await JodySync.pull();
+  if (r && r.applied) {
+    reloadAllViews();
+    syncUpdateStatusBar();
+  }
+}, 5 * 60 * 1000);
 
 </script>
 </body>

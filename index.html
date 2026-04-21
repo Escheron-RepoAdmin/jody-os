@@ -1683,6 +1683,45 @@ function importBackup() {
   save('imported', true);
 }
 
+// ── STORAGE MIGRATION ─────────────────────────────────────────────────────
+// Normalize legacy/cross-app formats. Runs once per page load; idempotent.
+//
+// History: v6 went through a refactor where ls_set was changed from
+// `localStorage.setItem(k, val)` (raw) to `localStorage.setItem(k, JSON.stringify(val))`.
+// Data written by the old v6 survives in data.json as unquoted raw strings
+// like 'yes', 'no', 'day'. iOS's load() uses JSON.parse which throws on those,
+// so the data is silently lost cross-app.
+//
+// Strategy: for each jos_ key, if the value fails JSON.parse, re-store it as
+// JSON.stringify(value). Values that parse successfully are left alone.
+function migrateStorage() {
+  if (load('migration_v1', false)) return;
+  let fixed = 0;
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('jos_') && !k.startsWith('jos_sync_') && k !== 'jos_migration_v1') {
+        keys.push(k);
+      }
+    }
+    keys.forEach(k => {
+      const raw = localStorage.getItem(k);
+      if (raw === null) return;
+      try { JSON.parse(raw); } catch {
+        // raw string that isn't valid JSON — re-store as quoted JSON
+        localStorage.setItem(k, JSON.stringify(raw));
+        fixed++;
+      }
+    });
+  } catch(e) { console.warn('[migrate] failed:', e); }
+  save('migration_v1', true);
+  if (fixed > 0) {
+    console.log(`[JodyOS] Migrated ${fixed} legacy storage values`);
+    if (typeof JodySync !== 'undefined') JodySync.schedulePush();
+  }
+}
+
 // ── STATE ─────────────────────────────────────────────────────────────────
 importBackup();
 
@@ -1734,14 +1773,14 @@ function getTypeColor(type) {
 // ── MED TRACKER ───────────────────────────────────────────────────────────
 function toggleMed() {
   const key = 'med_' + dateKey(today());
-  const current = load(key, false);
-  save(key, !current);
+  const taken = load(key, 'no') === 'yes';
+  save(key, taken ? 'no' : 'yes');
   renderMedBtn();
 }
 
 function renderMedBtn() {
   const key = 'med_' + dateKey(today());
-  const taken = load(key, false);
+  const taken = load(key, 'no') === 'yes';
   const btn = document.getElementById('medBtn');
   btn.className = 'med-btn' + (taken ? ' taken' : '');
   btn.title = taken ? 'Meds taken ✓' : 'Meds not logged';
@@ -2652,6 +2691,10 @@ JodySync.onStatusChange(syncUpdateStatus);
 (async () => {
   syncUpdateStatus();
   const result = await JodySync.init();
+  // Migration runs after pull so it normalizes whatever came from GitHub.
+  // If it fixed anything, save() inside migrateStorage triggers a push back
+  // so other devices get the migrated values.
+  migrateStorage();
   if (result && result.applied) reloadAllViews();
   syncUpdateStatus();
 })();
