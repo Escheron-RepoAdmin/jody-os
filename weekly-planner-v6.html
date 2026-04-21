@@ -4036,14 +4036,27 @@ async function syncPushNow() {
 
 async function syncPullNow() {
   const pullBtn = document.getElementById('sync-pull-btn');
+  const dot     = document.getElementById('sync-dot');
+  const lbl     = document.getElementById('sync-label');
+  // Show pulling state
   if (pullBtn) { pullBtn.textContent = '…'; pullBtn.style.pointerEvents = 'none'; }
+  if (dot) dot.className = 'sync-dot syncing';
+  if (lbl) lbl.textContent = 'Checking GitHub…';
   const result = await JodySync.pull();
+  // Restore button
   if (pullBtn) { pullBtn.textContent = '↓'; pullBtn.style.pointerEvents = 'auto'; }
   if (result.applied) {
     render();
     renderTaskPanels();
+    if (lbl) lbl.textContent = 'Pulled · just now';
+  } else if (result.skipped) {
+    if (lbl) lbl.textContent = 'Already up to date';
+  } else if (!result.ok) {
+    if (dot) dot.className = 'sync-dot error';
+    if (lbl) lbl.textContent = 'Pull failed';
   }
-  syncUpdateStatusBar();
+  // Let syncUpdateStatusBar restore proper state after a moment
+  setTimeout(syncUpdateStatusBar, 2000);
 }
 
 function _showSyncMsg(elId, ok, msg) {
