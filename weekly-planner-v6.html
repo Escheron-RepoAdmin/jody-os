@@ -1023,7 +1023,9 @@ function ls_set(key, val) {
   try {
     localStorage.setItem(PREFIX + key, JSON.stringify(val));
     flashSave();
-    if (typeof JodySync !== 'undefined') JodySync.schedulePush();
+    // Guarded against temporal dead zone — ls_set may be called during
+    // initial eval before `const JodySync` is initialized.
+    try { JodySync.schedulePush(); } catch {}
   } catch(e) { console.warn('localStorage unavailable'); }
 }
 function ls_getJSON(key, def = {}) {
@@ -1036,7 +1038,7 @@ function ls_setJSON(key, val) {
   try {
     localStorage.setItem(PREFIX + key, JSON.stringify(val));
     flashSave();
-    if (typeof JodySync !== 'undefined') JodySync.schedulePush();
+    try { JodySync.schedulePush(); } catch {}
   } catch(e) {}
 }
 
@@ -3956,10 +3958,11 @@ const JodySync = (() => {
 
   async function _ghGet() {
     const { pat } = getConfig();
-    // Cache-bust: append a timestamp query param and send no-cache headers.
-    // GitHub's API serves content through Fastly, which can cache responses
-    // aggressively. Without this, background pulls can return stale data
-    // written by another device several minutes ago.
+    // Cache-bust via a timestamp query param — changes the URL so browsers
+    // and CDN layers treat each request as a new cache key. We deliberately
+    // do NOT add Cache-Control or If-None-Match headers here because those
+    // are not on GitHub's CORS Access-Control-Allow-Headers allowlist, and
+    // adding them causes the preflight to fail and the request to be blocked.
     const url = _apiUrl() + '?t=' + Date.now();
     const res = await fetch(url, {
       cache: 'no-store',
@@ -3967,8 +3970,6 @@ const JodySync = (() => {
         'Authorization': `Bearer ${pat}`,
         'Accept': 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
-        'Cache-Control': 'no-cache',
-        'If-None-Match': '', // disable conditional-request 304 path
       }
     });
     if (res.status === 404) return null;
