@@ -719,7 +719,8 @@ body { background: var(--bg); font-family: 'Outfit', sans-serif; color: var(--in
     <div class="sync-status" id="sync-status-bar" onclick="openSyncModal()" title="GitHub sync settings">
       <div class="sync-dot unconfigured" id="sync-dot"></div>
       <div class="sync-label" id="sync-label">GitHub sync · tap to set up</div>
-      <button class="sync-push-btn" id="sync-push-btn" title="Push now" onclick="event.stopPropagation();syncPushNow()" style="display:none">↑</button>
+      <button class="sync-push-btn" id="sync-pull-btn" title="Pull from GitHub now" onclick="event.stopPropagation();syncPullNow()" style="display:none">↓</button>
+      <button class="sync-push-btn" id="sync-push-btn" title="Push to GitHub now" onclick="event.stopPropagation();syncPushNow()" style="display:none">↑</button>
     </div>
 
     <div style="font-size:9px;color:rgba(255,255,255,0.45);margin-top:6px;line-height:1.4;">Data saved locally. Sync to GitHub to share with mobile.</div>
@@ -3990,22 +3991,25 @@ const JodySync = (() => {
 // SYNC UI CONTROLLER
 // ══════════════════════════════════════════════════════
 function syncUpdateStatusBar() {
-  const s   = JodySync.getStatus();
-  const dot = document.getElementById('sync-dot');
-  const lbl = document.getElementById('sync-label');
-  const btn = document.getElementById('sync-push-btn');
+  const s       = JodySync.getStatus();
+  const dot     = document.getElementById('sync-dot');
+  const lbl     = document.getElementById('sync-label');
+  const pushBtn = document.getElementById('sync-push-btn');
+  const pullBtn = document.getElementById('sync-pull-btn');
   if (!dot || !lbl) return;
 
   if (!s.configured) {
     dot.className = 'sync-dot unconfigured';
     lbl.textContent = 'GitHub sync · tap to set up';
-    if (btn) btn.style.display = 'none';
+    if (pushBtn) pushBtn.style.display = 'none';
+    if (pullBtn) pullBtn.style.display = 'none';
     return;
   }
   if (s.pushing) {
     dot.className = 'sync-dot syncing';
     lbl.textContent = 'Syncing to GitHub…';
-    if (btn) btn.style.display = 'none';
+    if (pushBtn) pushBtn.style.display = 'none';
+    if (pullBtn) pullBtn.style.display = 'none';
     return;
   }
   dot.className = 'sync-dot connected';
@@ -4020,13 +4024,26 @@ function syncUpdateStatusBar() {
   } else {
     lbl.textContent = 'GitHub sync · never synced';
   }
-  if (btn) btn.style.display = 'block';
+  if (pushBtn) pushBtn.style.display = 'block';
+  if (pullBtn) pullBtn.style.display = 'block';
 }
 
 async function syncPushNow() {
   const result = await JodySync.push();
   syncUpdateStatusBar();
   if (!result.ok) _showSyncMsg('sync-test-result', false, 'Push failed: ' + result.reason);
+}
+
+async function syncPullNow() {
+  const pullBtn = document.getElementById('sync-pull-btn');
+  if (pullBtn) { pullBtn.textContent = '…'; pullBtn.style.pointerEvents = 'none'; }
+  const result = await JodySync.pull();
+  if (pullBtn) { pullBtn.textContent = '↓'; pullBtn.style.pointerEvents = 'auto'; }
+  if (result.applied) {
+    render();
+    renderTaskPanels();
+  }
+  syncUpdateStatusBar();
 }
 
 function _showSyncMsg(elId, ok, msg) {
@@ -4118,11 +4135,21 @@ function syncClearConfig() {
 
 JodySync.onStatusChange(syncUpdateStatusBar);
 
+const SYNC_POLL_INTERVAL = 2 * 60 * 1000; // 2 minutes
+
+async function syncAutoPoll() {
+  if (!JodySync.getStatus().configured) return;
+  const result = await JodySync.pull();
+  if (result && result.applied) { render(); renderTaskPanels(); }
+  syncUpdateStatusBar();
+}
+
 (async () => {
   syncUpdateStatusBar();
   const result = await JodySync.init();
   if (result && result.applied) { render(); renderTaskPanels(); }
   syncUpdateStatusBar();
+  setInterval(syncAutoPoll, SYNC_POLL_INTERVAL);
   setInterval(syncUpdateStatusBar, 60000);
 })();
 
