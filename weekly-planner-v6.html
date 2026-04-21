@@ -1013,13 +1013,12 @@ const PREFIX = 'jos_'; // Jody OS
 function ls_get(key, def = '') {
   try {
     const v = localStorage.getItem(PREFIX + key);
-    if (v === null) return def;
-    try { return JSON.parse(v); } catch { return v; }
+    return v !== null ? v : def;
   } catch(e) { return def; }
 }
 function ls_set(key, val) {
   try {
-    localStorage.setItem(PREFIX + key, JSON.stringify(val));
+    localStorage.setItem(PREFIX + key, val);
     flashSave();
     if (typeof JodySync !== 'undefined') JodySync.schedulePush();
   } catch(e) { console.warn('localStorage unavailable'); }
