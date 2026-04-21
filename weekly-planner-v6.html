@@ -3864,11 +3864,33 @@ const JodySync = (() => {
     });
     if (!res.ok) {
       const txt = await res.text();
-      throw new Error(`GitHub PUT ${res.status}: ${txt}`);
+      const err = new Error(`GitHub PUT ${res.status}: ${txt}`);
+      err.status = res.status;
+      throw err;
     }
     const j = await res.json();
     cfgSet('sha', j.content.sha);
     return true;
+  }
+
+  async function _refreshSha() {
+    // Fetch current file SHA from GitHub without applying content
+    try {
+      const { pat } = getConfig();
+      const res = await fetch(_apiUrl(), {
+        headers: {
+          'Authorization': `Bearer ${pat}`,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+        }
+      });
+      if (res.ok) {
+        const j = await res.json();
+        cfgSet('sha', j.sha);
+        return true;
+      }
+    } catch {}
+    return false;
   }
 
   // ── Data snapshot ─────────────────────────────────────────────────────────
@@ -3941,8 +3963,23 @@ const JodySync = (() => {
     _pushing = true;
     _notify();
 
-    const now = new Date().toISOString();
     try {
+      // Always pull first so our SHA is current and we don't overwrite newer remote data
+      const raw = await _ghGet();
+      if (raw) {
+        const remote     = JSON.parse(raw);
+        const remoteMeta = remote[META_KEY] || {};
+        const remoteTime = remoteMeta.updated ? new Date(remoteMeta.updated).getTime() : 0;
+        const lastTime   = cfgGet('last') ? new Date(cfgGet('last')).getTime() : 0;
+        if (remoteTime > lastTime) {
+          // Remote is newer — apply it first, then push merged result
+          _apply(remote);
+          cfgSet('last', remoteMeta.updated || new Date().toISOString());
+          _notify();
+        }
+      }
+
+      const now = new Date().toISOString();
       const snapshot = _snapshot();
       snapshot[META_KEY] = { updated: now, device: cfgGet('device', _defaultDevice()), version: DATA_VERSION };
       await _ghPut(JSON.stringify(snapshot, null, 2));
