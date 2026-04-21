@@ -693,6 +693,29 @@
     margin-top: 8px;
   }
 
+  .sync-device-code-display {
+    font-family: 'DM Mono', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 6px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    text-align: center;
+    margin: 16px 0;
+  }
+
+  .sync-step-label {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 6px;
+  }
+
   .sync-result-msg {
     font-size: 13px;
     font-family: 'DM Mono', monospace;
@@ -1059,26 +1082,7 @@
 
   .task-item { animation: slideIn 0.15s ease; }
   @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
-
-  .today-day-nav {
-    display: flex; align-items: center; gap: 8px;
-    padding: 10px 20px 4px; overflow-x: auto;
-    scrollbar-width: none; -ms-overflow-style: none;
-  }
-  .today-day-nav::-webkit-scrollbar { display: none; }
-  .day-nav-arrow {
-    flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%;
-    background: var(--surface); border: 1px solid var(--border);
-    color: var(--text2); font-size: 16px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: background 0.15s;
-  }
-  .day-nav-arrow:hover { background: var(--surface2); }
-  .day-pills-row {
-    display: flex; gap: 6px; flex: 1; justify-content: space-between;
-  }
-
-  </style>
+</style>
 </head>
 <body>
 <div id="app">
@@ -1108,13 +1112,6 @@
           <div class="now-title" id="nowTitle">Loading...</div>
           <div class="now-sub" id="nowSub"></div>
         </div>
-      </div>
-
-      <!-- Day navigation strip -->
-      <div class="today-day-nav" id="today-day-nav">
-        <button class="day-nav-arrow" onclick="shiftTodayWeek(-1)">‹</button>
-        <div class="day-pills-row" id="today-day-pills"></div>
-        <button class="day-nav-arrow" onclick="shiftTodayWeek(1)">›</button>
       </div>
       <!-- One Action -->
       <div class="one-action-card">
@@ -1326,7 +1323,9 @@
       </div>
     </div>
 
-    <!-- Connected state -->
+    <!-- Step 2: removed — PAT flow has no device code step -->
+
+    <!-- Step 3: Connected -->
     <div id="sync-step-connected" style="display:none">
       <div class="sync-connected-check">✓</div>
       <div class="sync-connected-title">Connected to GitHub</div>
@@ -1348,12 +1347,13 @@
 
 <script>
 /**
- * JodyOS GitHub Sync Module
- * Version: 3.0.0
+ * JodyOS OneDrive Sync Module
+ * Version: 2.0.0
  *
  * Bidirectional sync between localStorage (jos_ prefix) and a single
- * data.json file in a GitHub repo via the GitHub Contents API.
- * Authentication uses a fine-grained Personal Access Token stored locally.
+ * data.json file in OneDrive via the Microsoft Graph API.
+ * Authentication uses the OAuth2 device code flow — no redirect URI,
+ * no server, no secrets stored anywhere except refresh tokens in localStorage.
  *
  * ─── Public API ───────────────────────────────────────────────────────────
  *
@@ -1362,52 +1362,75 @@
  *     Returns { ok, applied?, skipped?, empty?, reason? }
  *
  *   JodySync.pull()
- *     Fetch data.json from GitHub → apply to localStorage if remote is newer.
+ *     Fetch data.json from OneDrive → apply to localStorage if remote is newer.
  *     Returns { ok, applied?, skipped?, empty?, reason? }
  *
  *   JodySync.push()
- *     Write localStorage snapshot → GitHub data.json.
+ *     Write localStorage snapshot → OneDrive data.json.
  *     Returns { ok, reason? }
  *
  *   JodySync.schedulePush()
- *     Debounced push (3s). Called automatically by save().
+ *     Debounced push (3s). Call after every localStorage write.
  *
- *   JodySync.configure({ pat?, repo?, device? })
+ *   JodySync.startDeviceFlow(clientId)
+ *     Starts the device code auth flow.
+ *     Returns { device_code, user_code, verification_uri, expires_in, interval }
+ *
+ *   JodySync.pollDeviceFlow(clientId, deviceCode, interval, onUpdate?)
+ *     Polls for token after user signs in. Saves tokens on success.
+ *     onUpdate(status) called with 'pending' | 'network_error' each poll.
+ *     Returns { ok, reason? }
+ *
+ *   JodySync.cancelDeviceFlow()
+ *     Cancels an in-progress poll.
+ *
+ *   JodySync.configure({ clientId?, device? })
  *     Save config values to localStorage.
  *
  *   JodySync.clearConfig()
  *     Remove all sync config. Data is untouched.
  *
  *   JodySync.getStatus()
- *     Returns { configured, device, lastSync, pushing }
+ *     Returns { configured, device, lastSync, pushing, tokenExpiry }
  *
  *   JodySync.onStatusChange(fn)
  *     Subscribe to status changes. Returns unsubscribe function.
  *
  * ─── Config keys (jos_sync_ prefix in localStorage) ──────────────────────
  *
- *   jos_sync_pat            GitHub fine-grained PAT
- *   jos_sync_repo           owner/repo (e.g. "escheron-repoadmin/jody-os")
- *   jos_sync_device         Device label (e.g. "Desktop", "iOS")
+ *   jos_sync_client_id      Azure App (client) ID
+ *   jos_sync_access_token   Current access token (expires ~1hr)
+ *   jos_sync_refresh_token  Refresh token (valid 90 days, renews on use)
+ *   jos_sync_token_expiry   ISO timestamp of access token expiry
  *   jos_sync_last           ISO timestamp of last successful sync
- *   jos_sync_sha            Current sha of data.json (for atomic PUT)
+ *   jos_sync_device         Device label (e.g. "Desktop", "iOS")
  *
  * ─── data.json format ────────────────────────────────────────────────────
  *
  *   {
- *     "_meta": { "updated": "ISO", "device": "Desktop", "version": 3 },
+ *     "_meta": { "updated": "ISO", "device": "Desktop", "version": 2 },
  *     "jos_tasks_creation": "[...]",
  *     "jos_tasks_admin": "[...]",
  *     ... all jos_ keys exactly as stored in localStorage
  *   }
  *
- * ─── PAT setup (one-time) ────────────────────────────────────────────────
+ * ─── Azure App setup (one-time, ~5 minutes) ───────────────────────────────
  *
- *   1. github.com → Settings → Developer settings → Personal access tokens
- *      → Fine-grained tokens → Generate new token
- *   2. Repository access: Only select repositories → jody-os
- *   3. Permissions → Repository → Contents: Read and write
- *   4. Copy the token (starts with github_pat_)
+ *   1. portal.azure.com → Azure Active Directory → App registrations → New
+ *   2. Supported account types: Personal Microsoft accounts only
+ *   3. Redirect URI: Mobile and desktop applications →
+ *      https://login.microsoftonline.com/common/oauth2/nativeclient
+ *   4. Under Authentication → enable "Allow public client flows" → Yes
+ *   5. Copy the Application (client) ID
+ *
+ * ─── PWA wiring ───────────────────────────────────────────────────────────
+ *
+ *   // After your ls_set / ls_setJSON definitions:
+ *   const _orig = ls_set;
+ *   ls_set = (k, v) => { _orig(k, v); JodySync.schedulePush(); };
+ *
+ *   // On app load:
+ *   JodySync.init().then(r => { if (r.applied) reloadViews(); });
  */
 
 (function (root, factory) {
@@ -1465,12 +1488,7 @@
 
   async function _ghGet() {
     const { pat } = getConfig();
-    // Cache-bust: a unique URL per call (different cache key) plus
-    // cache: 'no-store' to fully bypass the browser's HTTP cache.
-    // GitHub's Contents API ignores unknown query params.
-    const url = _apiUrl() + '?_=' + Date.now();
-    const res = await fetch(url, {
-      cache: 'no-store',
+    const res = await fetch(_apiUrl(), {
       headers: {
         'Authorization': `Bearer ${pat}`,
         'Accept': 'application/vnd.github+json',
@@ -1484,9 +1502,8 @@
     }
     const j = await res.json();
     cfgSet('sha', j.sha);
-    // Content is base64 encoded. Strip BOTH \r and \n (GitHub wraps the
-    // base64 string with line breaks that can include \r on some platforms).
-    const decoded = atob(j.content.replace(/[\r\n]/g, ''));
+    // Content is base64 encoded
+    const decoded = atob(j.content.replace(/\n/g, ''));
     return decoded;
   }
 
@@ -1555,11 +1572,6 @@
   }
 
   // ── PULL ──────────────────────────────────────────────────────────────────
-  // ── PULL ──────────────────────────────────────────────────────────────────
-  //
-  // Uses GitHub's content sha as the change marker, not timestamps. Every
-  // PUT to data.json yields a new sha — the server computes it from file
-  // contents. Comparing sha values is immune to clock skew between devices.
   async function pull() {
     if (!isConfigured()) return { ok: false, reason: 'not_configured' };
     try {
@@ -1568,20 +1580,14 @@
 
       const remote     = JSON.parse(raw);
       const remoteMeta = remote[META_KEY] || {};
-      const remoteSha  = cfgGet('sha');          // updated by _ghGet just now
-      const appliedSha = cfgGet('applied_sha');
+      const remoteTime = remoteMeta.updated ? new Date(remoteMeta.updated).getTime() : 0;
+      const lastTime   = cfgGet('last') ? new Date(cfgGet('last')).getTime() : 0;
 
-      console.log(`[JodySync pull] remote=${remoteMeta.updated} (${remoteMeta.device}) remoteSha=${remoteSha.slice(0,7)} appliedSha=${appliedSha.slice(0,7) || '(none)'}`);
-
-      if (remoteSha && remoteSha === appliedSha) {
-        return { ok: true, skipped: true };
-      }
+      if (remoteTime <= lastTime) return { ok: true, skipped: true };
 
       _apply(remote);
-      cfgSet('applied_sha', remoteSha);
       cfgSet('last', remoteMeta.updated || new Date().toISOString());
       _notify();
-      console.log(`[JodySync pull] applied ${Object.keys(remote).length} keys from ${remoteMeta.device}`);
       return { ok: true, applied: true, device: remoteMeta.device };
 
     } catch (e) {
@@ -1603,8 +1609,6 @@
       const snapshot = _snapshot();
       snapshot[META_KEY] = { updated: now, device: cfgGet('device', _defaultDevice()), version: DATA_VERSION };
       await _ghPut(JSON.stringify(snapshot, null, 2));
-      // Mark our just-pushed sha as applied so we don't re-apply our own data.
-      cfgSet('applied_sha', cfgGet('sha'));
       cfgSet('last', now);
       _pushing = false;
       _notify();
@@ -1624,19 +1628,6 @@
     _pushTimer = setTimeout(() => push(), PUSH_DEBOUNCE);
   }
 
-  // Force any pending debounced push to fire NOW (fire-and-forget).
-  // Call this on `visibilitychange` → hidden / `pagehide` / `beforeunload`
-  // so writes made just before the user switches apps or closes the tab
-  // actually reach GitHub instead of being lost in a pending timer.
-  function flushPush() {
-    if (!isConfigured()) return;
-    if (_pushTimer) {
-      clearTimeout(_pushTimer);
-      _pushTimer = null;
-      push(); // fire immediately, don't await — page may be closing
-    }
-  }
-
   // ── CONFIG ────────────────────────────────────────────────────────────────
   function configure({ pat, repo, device } = {}) {
     if (pat)    cfgSet('pat',    pat.trim());
@@ -1646,18 +1637,18 @@
   }
 
   function clearConfig() {
-    ['pat','repo','device','last','sha','applied_sha'].forEach(k => cfgDel(k));
+    ['pat','repo','device','last','sha'].forEach(k => cfgDel(k));
     _notify();
   }
 
-
+  
 // ── INIT ──────────────────────────────────────────────────────────────────
   async function init() {
     if (!isConfigured()) return { ok: false, reason: 'not_configured' };
     return pull();
   }
 
-  return { init, pull, push, schedulePush, flushPush, configure, clearConfig, getStatus, onStatusChange, _snapshot };
+  return { init, pull, push, schedulePush, configure, clearConfig, getStatus, onStatusChange, _snapshot };
 }));
 
 
@@ -1699,8 +1690,11 @@ const SCHED_WEEKEND = [
 
 // ── STORAGE ───────────────────────────────────────────────────────────────
 function load(key, fallback) {
-  try { const v = localStorage.getItem('jos_' + key); return v ? JSON.parse(v) : fallback; }
-  catch { return fallback; }
+  try {
+    const v = localStorage.getItem('jos_' + key);
+    if (!v && v !== 0 && v !== false) return fallback;
+    try { return JSON.parse(v); } catch { return v; }
+  } catch { return fallback; }
 }
 function save(key, val) {
   try { localStorage.setItem('jos_' + key, JSON.stringify(val)); if (typeof JodySync !== 'undefined') JodySync.schedulePush(); } catch {}
@@ -1715,45 +1709,6 @@ function importBackup() {
   save('imported', true);
 }
 
-// ── STORAGE MIGRATION ─────────────────────────────────────────────────────
-// Normalize legacy/cross-app formats. Runs once per page load; idempotent.
-//
-// History: v6 went through a refactor where ls_set was changed from
-// `localStorage.setItem(k, val)` (raw) to `localStorage.setItem(k, JSON.stringify(val))`.
-// Data written by the old v6 survives in data.json as unquoted raw strings
-// like 'yes', 'no', 'day'. iOS's load() uses JSON.parse which throws on those,
-// so the data is silently lost cross-app.
-//
-// Strategy: for each jos_ key, if the value fails JSON.parse, re-store it as
-// JSON.stringify(value). Values that parse successfully are left alone.
-function migrateStorage() {
-  if (load('migration_v1', false)) return;
-  let fixed = 0;
-  try {
-    const keys = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith('jos_') && !k.startsWith('jos_sync_') && k !== 'jos_migration_v1') {
-        keys.push(k);
-      }
-    }
-    keys.forEach(k => {
-      const raw = localStorage.getItem(k);
-      if (raw === null) return;
-      try { JSON.parse(raw); } catch {
-        // raw string that isn't valid JSON — re-store as quoted JSON
-        localStorage.setItem(k, JSON.stringify(raw));
-        fixed++;
-      }
-    });
-  } catch(e) { console.warn('[migrate] failed:', e); }
-  save('migration_v1', true);
-  if (fixed > 0) {
-    console.log(`[JodyOS] Migrated ${fixed} legacy storage values`);
-    if (typeof JodySync !== 'undefined') JodySync.schedulePush();
-  }
-}
-
 // ── STATE ─────────────────────────────────────────────────────────────────
 importBackup();
 
@@ -1761,17 +1716,12 @@ let currentTab = 'today';
 let currentTaskArea = 'creation';
 let weekOffset = load('weekOffset', 0);
 let selectedWeekDay = null;
-let viewingDk = null; // currently viewed date in Today tab (null = today)
 let captureArea = 'creation';
 
 // ── HELPERS ───────────────────────────────────────────────────────────────
 function today() { return new Date(); }
-function dateKey(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
+function localDateStr(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function dateKey(d) { return localDateStr(d); }
 function dayOfWeek(d) { return d.getDay(); } // 0=Sun
 function isWeekend(d) { const dow = dayOfWeek(d); return dow === 0 || dow === 6; }
 
@@ -1805,14 +1755,14 @@ function getTypeColor(type) {
 // ── MED TRACKER ───────────────────────────────────────────────────────────
 function toggleMed() {
   const key = 'med_' + dateKey(today());
-  const taken = load(key, 'no') === 'yes';
-  save(key, taken ? 'no' : 'yes');
+  const current = load(key, false);
+  save(key, !current);
   renderMedBtn();
 }
 
 function renderMedBtn() {
   const key = 'med_' + dateKey(today());
-  const taken = load(key, 'no') === 'yes';
+  const taken = load(key, false);
   const btn = document.getElementById('medBtn');
   btn.className = 'med-btn' + (taken ? ' taken' : '');
   btn.title = taken ? 'Meds taken ✓' : 'Meds not logged';
@@ -1827,65 +1777,16 @@ function renderHeader() {
 }
 
 // ── TODAY VIEW ────────────────────────────────────────────────────────────
-
-function renderTodayDayStrip() {
-  const pillsEl = document.getElementById('today-day-pills');
-  if (!pillsEl) return;
-  const now = today();
-  if (!viewingDk) viewingDk = dateKey(now);
-
-  // Show 7 days centred on current viewingDk week (Mon–Sun)
-  const viewD = new Date(viewingDk + 'T12:00:00');
-  const dow = viewD.getDay(); // 0=Sun
-  const weekStart = new Date(viewD);
-  weekStart.setDate(viewD.getDate() - ((dow + 6) % 7)); // Mon
-
-  const days = Array.from({length:7}, (_, i) => {
-    const d = new Date(weekStart);
-    d.setDate(weekStart.getDate() + i);
-    return d;
-  });
-
-  const todayKey = dateKey(now);
-  pillsEl.innerHTML = days.map(d => {
-    const key = dateKey(d);
-    const isToday = key === todayKey;
-    const isSelected = key === viewingDk;
-    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    return `<div class="day-pill ${isToday?'today':''} ${isSelected?'selected':''}" onclick="selectTodayDay('${key}')">
-      <div class="day-name">${dayNames[d.getDay()]}</div>
-      <div class="day-num">${d.getDate()}</div>
-    </div>`;
-  }).join('');
-}
-
-function selectTodayDay(key) {
-  viewingDk = key;
-  renderToday();
-}
-
-function shiftTodayWeek(dir) {
-  const base = viewingDk ? new Date(viewingDk + 'T12:00:00') : today();
-  base.setDate(base.getDate() + dir * 7);
-  viewingDk = dateKey(base);
-  renderToday();
-}
-
 function renderToday() {
   const now = today();
-  const viewD = viewingDk ? new Date(viewingDk + 'T12:00:00') : now;
-  const isActualToday = dateKey(viewD) === dateKey(now);
-  const sched = getSchedule(viewD);
-  const current = isActualToday ? getCurrentBlock(sched) : null;
+  const sched = getSchedule(now);
+  const current = getCurrentBlock(sched);
 
   // Header
-  document.getElementById('todayTitle').textContent = viewD.toLocaleDateString('en-US', { weekday: 'long' });
-  document.getElementById('todayDate').textContent = viewD.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  renderTodayDayStrip();
+  document.getElementById('todayTitle').textContent = now.toLocaleDateString('en-US', { weekday: 'long' });
+  document.getElementById('todayDate').textContent = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-  // Now indicator (only when viewing actual today)
-  const nowIndicator = document.getElementById('nowIndicator');
-  if (nowIndicator) nowIndicator.style.display = isActualToday ? 'flex' : 'none';
+  // Now indicator
   if (current) {
     document.getElementById('nowTitle').textContent = current.title;
     document.getElementById('nowSub').textContent = `Until ${fmtTime(current.end)} · ${current.label}`;
@@ -1896,7 +1797,7 @@ function renderToday() {
   }
 
   // Events
-  const evKey = dateKey(viewD);
+  const evKey = dateKey(now);
   const events = getEventsForDate(evKey);
   const evContainer = document.getElementById('todayEvents');
   if (events.length === 0) {
@@ -1918,7 +1819,7 @@ function renderToday() {
   renderDayFields();
 
   // Timeline
-  const nowH = isActualToday ? (now.getHours() + now.getMinutes() / 60) : -1;
+  const nowH = now.getHours() + now.getMinutes() / 60;
   const tlEl = document.getElementById('timeline');
   tlEl.innerHTML = sched.map(block => {
     const isCurrent = current && block.start === current.start;
@@ -2089,7 +1990,7 @@ function addTask() {
 function renderWeek() {
   const now = today();
   const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay() + 1 + weekOffset * 7); // Mon
+  weekStart.setDate(now.getDate() - now.getDay() + weekOffset * 7); // Sun
   weekStart.setHours(0,0,0,0);
 
   document.getElementById('weekLabel').textContent = 
@@ -2272,7 +2173,7 @@ function switchTab(tab) {
 
 // ── ONE ACTION / DAY NOTES / SHUTDOWN ─────────────────────────────────────
 function renderDayFields() {
-  const dk = viewingDk || dateKey(today());
+  const dk = dateKey(today());
 
   const oaEl = document.getElementById('one-action-input');
   if (oaEl) {
@@ -2397,7 +2298,7 @@ function advanceRecurringDate(currentDue, freqKey) {
   const freq = RECUR_FREQS.find(f => f.key === freqKey) || RECUR_FREQS.find(f => f.key === 'weekly');
   const base = currentDue ? new Date(currentDue + 'T00:00:00') : new Date();
   base.setDate(base.getDate() + freq.days);
-  return dateKey(base);
+  return localDateStr(base);
 }
 
 // ── RECURRING TASK COMPLETION ─────────────────────────────────────────────
@@ -2608,6 +2509,7 @@ function _showSyncMsg(elId, ok, msg) {
   el.textContent = (ok ? '✓ ' : '✕ ') + msg;
 }
 
+
 function openSyncModal() {
   const s = JodySync.getStatus();
   ['sync-step-setup','sync-step-connected'].forEach(id => {
@@ -2676,6 +2578,8 @@ async function syncConnect() {
   }
 }
 
+
+
 async function syncPushNow() {
   const result = await JodySync.push();
   syncUpdateStatus();
@@ -2723,10 +2627,6 @@ JodySync.onStatusChange(syncUpdateStatus);
 (async () => {
   syncUpdateStatus();
   const result = await JodySync.init();
-  // Migration runs after pull so it normalizes whatever came from GitHub.
-  // If it fixed anything, save() inside migrateStorage triggers a push back
-  // so other devices get the migrated values.
-  migrateStorage();
   if (result && result.applied) reloadAllViews();
   syncUpdateStatus();
 })();
@@ -2740,33 +2640,6 @@ setInterval(async () => {
     syncUpdateStatus();
   }
 }, 5 * 60 * 1000);
-
-// Flush any pending debounced push when the page is going away. Without
-// this, a write made 2 seconds before the user taps Home/closes the tab
-// would be lost — the push timer never gets to fire.
-//
-// visibilitychange → hidden fires reliably on mobile when switching apps.
-// pagehide fires when the tab/page is being unloaded.
-// beforeunload is a last-chance fallback for desktop.
-function _flushSyncBeforeExit() {
-  try { JodySync.flushPush(); } catch {}
-  // Also trigger a pull-on-return when the page becomes visible again,
-  // because mobile PWAs can sit in background for hours.
-}
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') {
-    _flushSyncBeforeExit();
-  } else if (document.visibilityState === 'visible') {
-    // Returning to foreground — pull any changes made on other devices
-    try {
-      JodySync.pull().then(r => {
-        if (r && r.applied) { reloadAllViews(); syncUpdateStatus(); }
-      });
-    } catch {}
-  }
-});
-window.addEventListener('pagehide', _flushSyncBeforeExit);
-window.addEventListener('beforeunload', _flushSyncBeforeExit);
 
 // Auto-expand textareas as user types
 function autoResize(el) {
