@@ -667,6 +667,10 @@ body { background: var(--bg); font-family: 'Outfit', sans-serif; color: var(--in
     <div class="logo">Operating System
       <span>Jody Wood · Escheron · v6</span>
     </div>
+    <a href="planner-guide.html" target="_blank" rel="noopener"
+       style="display:inline-block;margin-top:8px;font-size:10px;color:rgba(255,255,255,0.45);font-family:'DM Mono',monospace;letter-spacing:0.5px;text-decoration:none;transition:color 0.15s;"
+       onmouseover="this.style.color='rgba(255,255,255,0.8)'"
+       onmouseout="this.style.color='rgba(255,255,255,0.45)'">Guide ↗</a>
   </div>
 
   <div>
@@ -719,7 +723,8 @@ body { background: var(--bg); font-family: 'Outfit', sans-serif; color: var(--in
     <div class="sync-status" id="sync-status-bar" onclick="openSyncModal()" title="GitHub sync settings">
       <div class="sync-dot unconfigured" id="sync-dot"></div>
       <div class="sync-label" id="sync-label">GitHub sync · tap to set up</div>
-      <button class="sync-push-btn" id="sync-push-btn" title="Push now" onclick="event.stopPropagation();syncPushNow()" style="display:none">↑</button>
+      <button class="sync-push-btn" id="sync-pull-btn" title="Pull from GitHub now" onclick="event.stopPropagation();syncPullNow()" style="display:none">↓</button>
+      <button class="sync-push-btn" id="sync-push-btn" title="Push to GitHub now" onclick="event.stopPropagation();syncPushNow()" style="display:none">↑</button>
     </div>
 
     <div style="font-size:9px;color:rgba(255,255,255,0.45);margin-top:6px;line-height:1.4;">Data saved locally. Sync to GitHub to share with mobile.</div>
@@ -1164,8 +1169,9 @@ const SCHEDULES = {
     { start:21,  end:21.5, type:'shutdown', label:'Sleep',    title:'Wind Down',                      sub:'' },
   ],
   1: [ // Monday — admin kickoff
-    ...BASE.slice(0,3),
-    { start:11,  end:11.5, type:'admin',    label:'Admin',    title:'Admin Container — Weekly Kickoff', sub:'Monday admin pass · set week in motion' },
+    ...BASE.slice(0,2),
+    { start:7.5,  end:11,   type:'creation', label:'Creation',  title:'Deep Work — Escheron',              sub:'Build, strategy, engineering · peak med window' },
+    { start:11,   end:11.5, type:'admin',    label:'Admin',     title:'Admin Container — Weekly Kickoff',  sub:'Monday admin pass · set week in motion' },
     ...BASE.slice(3),
   ],
   2: BASE, // Tuesday
@@ -1176,10 +1182,11 @@ const SCHEDULES = {
   ],
   4: BASE, // Thursday
   5: [ // Friday — review
-    ...BASE.slice(0,3),
-    { start:11,  end:11.5, type:'admin',    label:'Admin',    title:'Admin Container',                sub:'Weekly debris catch' },
-    { start:11.5,end:12,   type:'self',     label:'Review',   title:'Weekly Review · 20 min max',     sub:'Open Review tab · one system change only' },
-    ...BASE.slice(3),
+    ...BASE.slice(0,2),
+    { start:7.5,  end:11,   type:'creation', label:'Creation', title:'Deep Work — Escheron',            sub:'Build, strategy, engineering · peak med window' },
+    { start:11,   end:11.5, type:'admin',    label:'Admin',    title:'Admin Container',                sub:'Weekly debris catch' },
+    { start:11.5, end:12,   type:'self',     label:'Review',   title:'Weekly Review · 20 min max',     sub:'Open Review tab · one system change only' },
+    ...BASE.slice(4),
   ],
   6: [ // Saturday
     { start:6,   end:7.5,  type:'family',   label:'Family',   title:'Weekend Morning',                sub:'Meds optional on weekends' },
@@ -3172,46 +3179,6 @@ function setView(v) {
 }
 
 // ══════════════════════════════════════════════════════
-// QUICK-ADD MODAL
-// ══════════════════════════════════════════════════════
-let modalSelectedContainer = 'creation';
-
-function openModal(preselect) {
-  modalSelectedContainer = preselect || 'creation';
-  document.getElementById('modal-task-input').value = '';
-  document.getElementById('modal-saved-badge').style.display = 'none';
-  renderModalContainers();
-  document.getElementById('modal-overlay').classList.add('open');
-  setTimeout(() => document.getElementById('modal-task-input').focus(), 100);
-}
-function closeModal() {
-  document.getElementById('modal-overlay').classList.remove('open');
-}
-function renderModalContainers() {
-  const el = document.getElementById('modal-containers');
-  el.innerHTML = '';
-  ALL_CONTAINERS.forEach(c => {
-    const btn = document.createElement('button');
-    btn.className = 'modal-cont-btn' + (modalSelectedContainer===c.type?' selected':'');
-    btn.style.cssText = `border-color:${c.dot};color:${modalSelectedContainer===c.type?'white':c.dot};background:${modalSelectedContainer===c.type?c.dot:'transparent'};`;
-    btn.textContent = c.name;
-    btn.onclick = () => { modalSelectedContainer=c.type; renderModalContainers(); };
-    el.appendChild(btn);
-  });
-}
-function saveModalTask() {
-  const text = document.getElementById('modal-task-input').value.trim();
-  if (!text) return;
-  addTask(modalSelectedContainer, text);
-  const c = ALL_CONTAINERS.find(c=>c.type===modalSelectedContainer);
-  const badge = document.getElementById('modal-saved-badge');
-  document.getElementById('modal-saved-to').textContent = c ? c.name : modalSelectedContainer;
-  badge.style.display = 'flex';
-  document.getElementById('modal-task-input').value = '';
-  document.getElementById('modal-task-input').focus();
-  setTimeout(() => { badge.style.display='none'; }, 2000);
-}
-// ══════════════════════════════════════════════════════
 // EVENTS — user-added schedule items
 // Storage: jos_events_{dateKey} → array of event objects
 // Recurring stored as template: jos_recurring → array
@@ -4030,19 +3997,22 @@ function syncUpdateStatusBar() {
   const s   = JodySync.getStatus();
   const dot = document.getElementById('sync-dot');
   const lbl = document.getElementById('sync-label');
-  const btn = document.getElementById('sync-push-btn');
+  const pushBtn = document.getElementById('sync-push-btn');
+  const pullBtn = document.getElementById('sync-pull-btn');
   if (!dot || !lbl) return;
 
   if (!s.configured) {
     dot.className = 'sync-dot unconfigured';
     lbl.textContent = 'GitHub sync · tap to set up';
-    if (btn) btn.style.display = 'none';
+    if (pushBtn) pushBtn.style.display = 'none';
+    if (pullBtn) pullBtn.style.display = 'none';
     return;
   }
   if (s.pushing) {
     dot.className = 'sync-dot syncing';
     lbl.textContent = 'Syncing to GitHub…';
-    if (btn) btn.style.display = 'none';
+    if (pushBtn) pushBtn.style.display = 'none';
+    if (pullBtn) pullBtn.style.display = 'none';
     return;
   }
   dot.className = 'sync-dot connected';
@@ -4057,7 +4027,25 @@ function syncUpdateStatusBar() {
   } else {
     lbl.textContent = 'GitHub sync · never synced';
   }
-  if (btn) btn.style.display = 'block';
+  if (pushBtn) pushBtn.style.display = 'block';
+  if (pullBtn) pullBtn.style.display = 'block';
+}
+
+async function syncPullNow() {
+  const pullBtn = document.getElementById('sync-pull-btn');
+  if (pullBtn) { pullBtn.textContent = '…'; pullBtn.style.pointerEvents = 'none'; }
+  const result = await JodySync.pull();
+  if (pullBtn) { pullBtn.textContent = '↓'; pullBtn.style.pointerEvents = 'auto'; }
+  if (result.applied) {
+    render();
+    renderTaskPanels();
+    _showSyncMsg('sync-test-result', true, 'Pulled changes from ' + (result.device || 'remote') + '.');
+  } else if (result.skipped) {
+    // already current — no visual noise needed
+  } else if (!result.ok) {
+    _showSyncMsg('sync-test-result', false, 'Pull failed: ' + result.reason);
+  }
+  syncUpdateStatusBar();
 }
 
 async function syncPushNow() {
@@ -4155,11 +4143,27 @@ function syncClearConfig() {
 
 JodySync.onStatusChange(syncUpdateStatusBar);
 
+const SYNC_POLL_INTERVAL = 2 * 60 * 1000; // 2 minutes
+
+async function syncAutoPoll() {
+  if (!JodySync.getStatus().configured) return;
+  const result = await JodySync.pull();
+  if (result && result.applied) {
+    render();
+    renderTaskPanels();
+  }
+  syncUpdateStatusBar();
+}
+
 (async () => {
   syncUpdateStatusBar();
+  // Pull on load
   const result = await JodySync.init();
   if (result && result.applied) { render(); renderTaskPanels(); }
   syncUpdateStatusBar();
+  // Poll for remote changes every 2 minutes
+  setInterval(syncAutoPoll, SYNC_POLL_INTERVAL);
+  // Update "X min ago" label every 60s
   setInterval(syncUpdateStatusBar, 60000);
 })();
 
