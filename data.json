@@ -22,12 +22,12 @@
   "jos_med_2026-03-07": "yes",
   "jos_imported": "true",
   "jos_med_2026-03-08": "yes",
-  "jos_events_2026-04-21": "[]",
+  "jos_events_2026-04-21": "[{\"id\":\"1776739133839\",\"title\":\"Testingnew\",\"start\":\"09:00\",\"end\":\"10:00\",\"notes\":\"\",\"repeat\":\"none\",\"color\":\"#374151\"}]",
   "jos_sched_2026-03-18": "[{\"start\":7,\"end\":7.5,\"type\":\"self\",\"label\":\"Self\",\"title\":\"Transition + Self Check\",\"sub\":\"Movement, coffee, set One Action ÃÂÃÂ· ADHD/Frida/health check-in\"},{\"start\":7.5,\"end\":11.5,\"type\":\"creation\",\"label\":\"Creation\",\"title\":\"Deep Work ÃÂ¢ÃÂÃÂ Escheron\",\"sub\":\"Build, strategy, engineering ÃÂÃÂ· peak med window\"},{\"start\":12,\"end\":13,\"type\":\"family\",\"label\":\"Break\",\"title\":\"Lunch\",\"sub\":\"Protein-rich ÃÂÃÂ· step away from desk\"},{\"start\":15,\"end\":15.5,\"type\":\"legacy\",\"label\":\"Legacy\",\"title\":\"Legacy Container ÃÂÃÂ· 25 min\",\"sub\":\"Old/sticky: close, decide, delegate, break down\"},{\"start\":15.5,\"end\":16,\"type\":\"home\",\"label\":\"Home\",\"title\":\"Admin + Home ÃÂÃÂ· 25 min\",\"sub\":\"Admin second pass + house/family/GTA tasks\"},{\"start\":16,\"end\":17.5,\"type\":\"creation\",\"label\":\"Creation\",\"title\":\"Light Creation / Review\",\"sub\":\"Lower-intensity build ÃÂÃÂ· taper beginning\"},{\"start\":17.5,\"end\":18,\"type\":\"family\",\"label\":\"Wrap\",\"title\":\"Shutdown Ritual\",\"sub\":\"Write completion + set tomorrow's action\"},{\"start\":18,\"end\":21,\"type\":\"family\",\"label\":\"Family\",\"title\":\"Family Time ÃÂ¢ÃÂÃÂ Protected\",\"sub\":\"No work, no decisions\"},{\"start\":21,\"end\":21.5,\"type\":\"shutdown\",\"label\":\"Sleep\",\"title\":\"Wind Down\",\"sub\":\"No screens ÃÂÃÂ· target 9:30ÃÂ¢ÃÂÃÂ10pm sleep\"}]",
   "jos_dayIndex": "2",
   "jos_view": "day",
   "_meta": {
-    "updated": "2026-04-21T02:38:45.468Z",
+    "updated": "2026-04-21T02:38:56.841Z",
     "device": "iOS",
     "version": 3
   }
