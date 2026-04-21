@@ -3959,14 +3959,19 @@ const JodySync = (() => {
   async function _ghGet() {
     const { pat, repo } = getConfig();
     console.log(`[JodySync GET] repo=${repo} pat_len=${pat.length} pat_prefix=${pat.slice(0, 10)}…`);
-    const res = await fetch(_apiUrl(), {
+    // Cache-bust: a unique URL per call (different cache key) plus
+    // cache: 'no-store' to fully bypass the browser's HTTP cache.
+    // GitHub's Contents API ignores unknown query params, so ?_=N is safe.
+    const url = _apiUrl() + '?_=' + Date.now();
+    const res = await fetch(url, {
+      cache: 'no-store',
       headers: {
         'Authorization': `Bearer ${pat}`,
         'Accept': 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
       }
     });
-    console.log(`[JodySync GET] ${_apiUrl()} → ${res.status}`);
+    console.log(`[JodySync GET] ${url} → ${res.status}`);
     if (res.status === 404) {
       let bodyHint = '';
       try { const txt = await res.text(); bodyHint = ' — body: ' + txt.slice(0, 200); } catch {}
@@ -3981,8 +3986,9 @@ const JodySync = (() => {
     }
     const j = await res.json();
     cfgSet('sha', j.sha);
-    // Content is base64 encoded
-    const decoded = atob(j.content.replace(/\n/g, ''));
+    // Content is base64 encoded. Strip BOTH \r and \n (GitHub wraps the
+    // base64 string with line breaks that can include \r on some platforms).
+    const decoded = atob(j.content.replace(/[\r\n]/g, ''));
     return decoded;
   }
 
@@ -4130,6 +4136,19 @@ const JodySync = (() => {
     _pushTimer = setTimeout(() => push(), PUSH_DEBOUNCE);
   }
 
+  // Force any pending debounced push to fire NOW (fire-and-forget).
+  // Call on visibilitychange → hidden / pagehide / beforeunload so writes
+  // don't get lost when the user switches apps or closes the tab with a
+  // pending debounced push timer still waiting.
+  function flushPush() {
+    if (!isConfigured()) return;
+    if (_pushTimer) {
+      clearTimeout(_pushTimer);
+      _pushTimer = null;
+      push();
+    }
+  }
+
   // ── CONFIG ────────────────────────────────────────────────────────────────
   function configure({ pat, repo, device } = {}) {
     if (pat)    cfgSet('pat',    pat.trim());
@@ -4149,7 +4168,7 @@ const JodySync = (() => {
     return pull();
   }
 
-  return { init, pull, push, schedulePush, configure, clearConfig, getStatus, onStatusChange, _snapshot };
+  return { init, pull, push, schedulePush, flushPush, configure, clearConfig, getStatus, onStatusChange, _snapshot };
 })();
 
 // ══════════════════════════════════════════════════════
@@ -4344,6 +4363,28 @@ setInterval(async () => {
     syncUpdateStatusBar();
   }
 }, 5 * 60 * 1000);
+
+// Flush any pending debounced push when the page is going away. Without
+// this, a write made 2 seconds before closing the tab or switching windows
+// would be lost — the push timer never fires.
+function _flushSyncBeforeExit() {
+  try { JodySync.flushPush(); } catch {}
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    _flushSyncBeforeExit();
+  } else if (document.visibilityState === 'visible') {
+    // Returning to foreground — pull remote changes in case another device
+    // pushed while we were hidden.
+    try {
+      JodySync.pull().then(r => {
+        if (r && r.applied) { reloadAllViews(); syncUpdateStatusBar(); }
+      });
+    } catch {}
+  }
+});
+window.addEventListener('pagehide', _flushSyncBeforeExit);
+window.addEventListener('beforeunload', _flushSyncBeforeExit);
 
 </script>
 </body>

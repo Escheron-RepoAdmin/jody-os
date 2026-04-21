@@ -1465,7 +1465,12 @@
 
   async function _ghGet() {
     const { pat } = getConfig();
-    const res = await fetch(_apiUrl(), {
+    // Cache-bust: a unique URL per call (different cache key) plus
+    // cache: 'no-store' to fully bypass the browser's HTTP cache.
+    // GitHub's Contents API ignores unknown query params.
+    const url = _apiUrl() + '?_=' + Date.now();
+    const res = await fetch(url, {
+      cache: 'no-store',
       headers: {
         'Authorization': `Bearer ${pat}`,
         'Accept': 'application/vnd.github+json',
@@ -1479,8 +1484,9 @@
     }
     const j = await res.json();
     cfgSet('sha', j.sha);
-    // Content is base64 encoded
-    const decoded = atob(j.content.replace(/\n/g, ''));
+    // Content is base64 encoded. Strip BOTH \r and \n (GitHub wraps the
+    // base64 string with line breaks that can include \r on some platforms).
+    const decoded = atob(j.content.replace(/[\r\n]/g, ''));
     return decoded;
   }
 
@@ -1618,6 +1624,19 @@
     _pushTimer = setTimeout(() => push(), PUSH_DEBOUNCE);
   }
 
+  // Force any pending debounced push to fire NOW (fire-and-forget).
+  // Call this on `visibilitychange` → hidden / `pagehide` / `beforeunload`
+  // so writes made just before the user switches apps or closes the tab
+  // actually reach GitHub instead of being lost in a pending timer.
+  function flushPush() {
+    if (!isConfigured()) return;
+    if (_pushTimer) {
+      clearTimeout(_pushTimer);
+      _pushTimer = null;
+      push(); // fire immediately, don't await — page may be closing
+    }
+  }
+
   // ── CONFIG ────────────────────────────────────────────────────────────────
   function configure({ pat, repo, device } = {}) {
     if (pat)    cfgSet('pat',    pat.trim());
@@ -1638,7 +1657,7 @@
     return pull();
   }
 
-  return { init, pull, push, schedulePush, configure, clearConfig, getStatus, onStatusChange, _snapshot };
+  return { init, pull, push, schedulePush, flushPush, configure, clearConfig, getStatus, onStatusChange, _snapshot };
 }));
 
 
@@ -2721,6 +2740,33 @@ setInterval(async () => {
     syncUpdateStatus();
   }
 }, 5 * 60 * 1000);
+
+// Flush any pending debounced push when the page is going away. Without
+// this, a write made 2 seconds before the user taps Home/closes the tab
+// would be lost — the push timer never gets to fire.
+//
+// visibilitychange → hidden fires reliably on mobile when switching apps.
+// pagehide fires when the tab/page is being unloaded.
+// beforeunload is a last-chance fallback for desktop.
+function _flushSyncBeforeExit() {
+  try { JodySync.flushPush(); } catch {}
+  // Also trigger a pull-on-return when the page becomes visible again,
+  // because mobile PWAs can sit in background for hours.
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    _flushSyncBeforeExit();
+  } else if (document.visibilityState === 'visible') {
+    // Returning to foreground — pull any changes made on other devices
+    try {
+      JodySync.pull().then(r => {
+        if (r && r.applied) { reloadAllViews(); syncUpdateStatus(); }
+      });
+    } catch {}
+  }
+});
+window.addEventListener('pagehide', _flushSyncBeforeExit);
+window.addEventListener('beforeunload', _flushSyncBeforeExit);
 
 // Auto-expand textareas as user types
 function autoResize(el) {
