@@ -22,13 +22,13 @@
   "jos_med_2026-03-09": "\"yes\"",
   "jos_med_2026-03-07": "\"yes\"",
   "jos_imported": "true",
-  "jos_events_2026-04-21": "[{\"id\":\"1776748322833\",\"title\":\"Ggggg\",\"start\":\"09:00\",\"end\":\"10:00\",\"notes\":\"\",\"repeat\":\"none\",\"color\":\"#374151\"}]",
+  "jos_events_2026-04-21": "[]",
   "jos_med_2026-03-08": "\"yes\"",
   "jos_oneaction_2026-04-21": "\"Test\"",
   "jos_dayIndex": "4",
   "jos_view": "day",
   "_meta": {
-    "updated": "2026-04-21T05:36:03.587Z",
+    "updated": "2026-04-21T05:36:19.030Z",
     "device": "iOS",
     "version": 3
   }
